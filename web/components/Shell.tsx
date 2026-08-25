@@ -106,6 +106,14 @@ export function Shell({ children }: { children: ReactNode }): ReactNode {
                 {p.label}
               </Link>
             ))}
+            {/*
+              Deliberately outside PORTALS: the identity bar below is the Fabric
+              X.509 switcher, and the Midnight portal does not use it — there the
+              caller's role is a private witness, not a certificate.
+            */}
+            <Link href="/midnight" data-active={pathname.startsWith('/midnight')}>
+              Midnight
+            </Link>
           </nav>
         </header>
 

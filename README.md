@@ -1,412 +1,327 @@
 # VERITY
 
-**Making loan classification tamper-evident in Bangladesh's banking system.**
-Prototype · BCOLBD 2026, Blockchain Category (Student) · Team Logarithm
+**A board vote that proves itself.**
 
-> **Status: functionally complete and running.** Fabric v3 BFT network, all four modules driven end to end
-> against a real ledger, 8/8 red-team attacks refused, 162 unit tests green. Remaining work is demo assets
-> and rehearsal — see [What is built, and what is not](#what-is-built-and-what-is-not).
+Supervisory infrastructure for bank loan classification, built on **Midnight**. The rules a
+regulator already writes are enforced inside a Compact smart contract, and the evidence that
+a board actually authorised a write-off is proved in **zero knowledge** — the directors'
+credentials never reach the chain.
 
----
+*Brainwave 2026 · Midnight Track · Team Logarithm*
 
-## The problem in one paragraph
-
-Bangladesh's gross non-performing loan ratio stood at **32.26% in March 2026**. An Asset Quality Review of six
-banks by Ernst & Young and KPMG assessed **Tk 147,595 crore** of non-performing loans against **Tk 35,044
-crore** reported — about 4.2 times. Bangladesh Bank's rules are not what is missing: every classification must
-already be justified in writing over two named signatures, rescheduling is capped at three occasions, and the
-third attempt needs Board approval. **The record is what is missing.** It is held by the institution being
-examined, it can be revised afterwards, and it is read only when an inspector is physically present.
-
-Verity commits those existing signatures to an append-only ledger, checks the approval authority in code
-rather than trusting a self-reported field, and measures rescheduling against the statutory quarterly calendar.
+> **Live on Midnight Preview.**
+> Contract address: `6fcd40645315980824c02a865e9601b206a3d0702ecf4ea8044a9fd950d67a2b`
+>
+> Verified end to end: the same write-off transaction was **refused** with zero director
+> approvals and **committed at block 580673** with two — and the approving credentials
+> never appeared on the ledger. Reproduce it with `node scripts/midnight-smoke.mjs`.
 
 ---
 
-## What it actually does
+## The problem
 
-```mermaid
-flowchart LR
-    subgraph BANK["Bank"]
-        CBS[(Core banking<br/>system)]
-        ADP["Read-only adapter<br/><i>SELECT only</i>"]
-        OFF["Officer<br/><i>X.509 · role · seniority</i>"]
-    end
+A supervisor's rules are usually not what is missing.
 
-    subgraph LEDGER["Hyperledger Fabric · SmartBFT"]
-        CC["Chaincode<br/><i>checks authority,<br/>refuses by name</i>"]
-        L[("Append-only<br/>ledger")]
-    end
+Classification already has to be justified in writing over two named signatures.
+Rescheduling is already capped at a fixed number of occasions. The later attempts already
+need Board approval. Those rules exist, and they are specific.
 
-    subgraph SUP["Bangladesh Bank"]
-        RM[("Read model<br/><i>rebuilt from block 0</i>")]
-        DASH["Supervisor<br/>dashboard"]
-    end
+**What is missing is the record.** It is held by the institution being examined. It can be
+revised afterwards. And it is read once a year, when an inspector is physically present.
 
-    DEP["Depositor"]
+The gap this creates is not theoretical. One Asset Quality Review of six banks assessed
+roughly **4.2×** the non-performing loans those banks had reported.
 
-    CBS -->|reads, never writes| ADP
-    ADP --> OFF
-    OFF -->|signed event| CC
-    CC -->|endorsed by bank<br/>AND supervisor| L
-    L -->|block events| RM
-    RM --> DASH
-    L -.->|inclusion proof| DEP
-    CBS -.->|CL-1 return| DASH
+### Why not just put it on a blockchain?
 
-    style CC fill:#e2fbec,stroke:#0a7a43
-    style L fill:#111111,color:#ffffff
-    style ADP fill:#fbf1d9,stroke:#8a6100
-```
+Because the obvious version of that trade is bad. A bank's board approving a write-off is
+commercially sensitive information. Proving you had board authorisation by **publishing
+every director's signature** hands a competitor your governance record. That is a real
+reason institutions resist transparent ledgers, and it is not an unreasonable one.
 
-The adapter is read-only **at the database grant**, not by convention. Existing CL-1 submission, EDW upload
-and CIB reporting continue unchanged — nothing a bank already files is replaced.
+Verity's claim is that you should not have to choose. A supervisor needs to know that
+*enough of the right people* approved. It does not need to know *who they were and what
+they signed*.
 
 ---
 
-## Run it
+## What Midnight changes
 
-Requires **Docker**, **Node 20+**, and **WSL2** on Windows. First run takes 15–30 minutes, almost all of it
-downloading Fabric images.
+The predecessor of this project ran on Hyperledger Fabric. Porting to Midnight was not a
+change of hosting — it changed what the contract can honestly claim.
 
-```bash
-git clone https://github.com/ripWr3ncH/Verity-TeamLogarithm
-cd Verity-TeamLogarithm
+| | Fabric version | Midnight version |
+|---|---|---|
+| Board approval evidence | every director signature submitted **in cleartext** as a transaction argument | approval secrets are a **private witness**; only the count that verified is disclosed |
+| Regulatory thresholds | hardcoded, with jurisdiction-specific citations | `RegulatoryConfig` ledger struct, Council-governed, changeable without redeploying |
+| Who may confirm a director | MSP identity | on-ledger role registry; a bank still cannot constitute its own board |
 
-source network/scripts/wsl-env.sh   # WSL2 only: Node + jq into user space, no sudo
-cd network && ./bootstrap.sh        # once per machine
-cd .. && ./scripts/up.sh            # network, CAs, identities, chaincode, services
+### The board-threshold circuit
+
+This is the heart of the project.
+
+A director registers a **commitment** to a secret, not the secret:
+`publicKeyCommitment = persistentHash([secret])`. To approve an event, they supply that
+secret privately. Inside the circuit, Verity:
+
+1. re-derives `persistentHash([secret])` and compares it to the registered commitment;
+2. counts the slot only if that director is **confirmed** and **not revoked**;
+3. rejects duplicates pairwise, so one director cannot fill several slots;
+4. discloses **only the resulting count** — never the secrets.
+
+```
+assert(disclose(validCount) >= config.boardThresholdK,
+       "board authorisation required: insufficient confirmed director signatures")
 ```
 
-Then populate it — the order matters, each step depends on the one before:
+A verifier learns *"enough directors approved."* Nothing else crosses the boundary.
 
-```bash
-node scripts/register-directors.mjs       # k-of-n Board for both banks
-npm --prefix seed run generate            # deterministic synthetic portfolio
-node scripts/seed-ledger.mjs              # 806 loans onto the ledger  (~60s)
-node scripts/seed-cbs.mjs                 # the bank's estate + a CL-1 with omissions
-node scripts/run-exposure-ceremony.mjs    # Module II end to end
-node scripts/run-liability-commitment.mjs # Modules III and IV end to end
-```
+### What this does and does not prove
 
-Open <http://localhost:3000>. Stop with `./scripts/down.sh`.
+We would rather write the limits down than let a demo imply more than it delivers.
 
----
-
-## The five demonstrations
-
-### Act 1 — an approval level that exists only on paper
-
-```mermaid
-sequenceDiagram
-    participant O as Officer Rahim<br/>seniority 2
-    participant CC as Chaincode
-    participant D as Registered<br/>directors
-    participant BB as Bangladesh Bank<br/>peer
-
-    O->>CC: RESCHEDULE · RS-3 · his signature alone
-    CC-->>O: BOARD_AUTHORISATION_REQUIRED<br/>supplied 0 of 3 director signatures
-
-    O->>D: request Board approval
-    D-->>O: 2 ed25519 signatures
-    O->>CC: RESCHEDULE · RS-3 · 2 signatures
-    CC-->>O: refused — supplied 2 of 3
-
-    D-->>O: third signature
-    O->>CC: RESCHEDULE · RS-3 · 3 signatures
-    CC->>BB: endorse
-    BB-->>CC: endorsed
-    CC-->>O: committed · block 35
-```
-
-The "2 of 3" step is the one that matters — those are real ed25519 signatures, verified against the registered
-director set and counted as *distinct* signers. The threshold is not an array-length check.
-
-#### Act 1b — and who decides who the three directors are?
-
-Counting signatures proves that three keys signed. It says nothing about **whose** keys they are. A bank that
-can register its own directors registers three, signs its own RS-3 three times, and every check passes except
-the one that mattered.
-
-```mermaid
-sequenceDiagram
-    participant MD as Bank MD/CEO
-    participant CC as Chaincode
-    participant BB as Bangladesh Bank
-
-    MD->>CC: RegisterDirector x3
-    CC-->>MD: recorded — status PENDING
-
-    MD->>CC: RS-3, signed by all three
-    CC-->>MD: DIRECTOR_NOT_CONFIRMED<br/>a bank cannot constitute its own Board
-
-    BB->>CC: ConfirmDirector
-    CC-->>BB: status CONFIRMED, confirmer named
-    MD->>CC: the SAME three signatures
-    CC-->>MD: committed
-```
-
-Every signature in the refused attempt is cryptographically valid and every key is in the bank's registered
-set. Only the supervisor's confirmation is missing, and that is what made the Board a board.
-
-This adds **no new rule** either: a bank director's appointment already requires Bangladesh Bank's prior
-approval under the Bank Company Act 1991. Verity turns an approval that exists on paper into a precondition
-the code checks — the same move it makes for BRPD 16/2022 above.
-
-Records written before this control existed carry no status and are treated as **pending**, not
-grandfathered in. Failing closed is the only safe direction: the alternative silently exempts exactly the
-directors the control exists to catch.
-
-### Act 2 — what the return records, and what the ledger records
-
-The same exposure, two columns. Every quarterly return in the sequence reports it as *Unclassified*.
-
-| CL-1 reference date | Reported | Ledger | E |
-|---|---|---|---|
-| 30 Jun Y1 | Unclassified | `RESCHEDULE` RS-1, **12 days** before | 0.698 |
-| 31 Dec Y1 | Unclassified | `RESCHEDULE` RS-2, **11 days** before | 2.136 |
-| 30 Sep Y2 | Unclassified | `RESCHEDULE` RS-3, **15 days** before, Board k-of-n | 4.048 |
-| 31 Mar Y3 | Unclassified | `RESCHEDULE` RS-4, **23 days** before | **6.055** |
-
-An ordinary forbearance control over the same period reaches **0.534** — an **11.3× separation** the return
-does not carry. Both figures reproduce on the live ledger.
-
-And the honest half: **35% of all reschedulings in this population fall within 30 days of a reference date.**
-Ordinary forbearance clusters near period-end too. That is why E\* is calibrated against the measured
-distribution rather than against zero, and the histogram sits on the dashboard beside the queue.
-
-### Act 3a — privacy, enforced by the platform
-
-Same query, two identities:
-
-| Caller | `authorised` | Payload | Hash |
-|---|---|---|---|
-| `BangladeshBankMSP` | true | borrower reference, exact amount, justification | `61311e69…` |
-| `BankBMSP` | false | — | `61311e69…` |
-
-Both see the same hash. The payload was never disseminated to BankB's peer — Fabric's private data
-collections stop it at the gossip layer, so the chaincode could not reveal it if it wanted to.
-
-### Act 3b — cross-bank exposure without disclosure
-
-```mermaid
-sequenceDiagram
-    participant A as BankA
-    participant B as BankB
-    participant CC as Chaincode
-    participant S as Supervisor
-    participant I as Independent<br/>holders
-
-    Note over A,B: each below the 25% single-borrower limit
-    A->>CC: Enc(520 crore)
-    B->>CC: Enc(430 crore)
-    CC->>CC: product of ciphertexts mod n squared<br/>nothing decrypted
-
-    S->>I: open the aggregate?
-    Note over S,I: supervisor alone — QUORUM_SHORT<br/>independents alone — SUPERVISOR_ABSENT
-    I-->>S: 2 of 3 shares
-    S->>CC: total 950 plus randomness
-    CC->>CC: verify the decryption proof
-    CC-->>S: 950 exceeds threshold 625 — ALERT
-```
-
-Neither bank breaches its own limit. The group breaches the system's. **Paillier adds; it does not compare** —
-so the total is threshold-decrypted to the supervisor and compared in the clear, and the chaincode verifies
-the announced total against the ciphertext it holds before believing it.
-
-### Act 5 — governance that executes
-
-A bank proposes raising its own alert threshold and is refused at **1 of 3**. Bangladesh Bank approves — **2 of
-3**, still refused. The FRC approves and it activates, recorded with named approvers.
-
-Then `./network.sh kill-orderer 3` and the network commits anyway, in 423 ms.
+- It **does** prove knowledge of the preimage of a registered commitment, so a director's
+  credential never appears on-chain. That is a real improvement over the Fabric version.
+- It is **not** a signature over the event. A bank that has collected a director's secret
+  once could reuse it for a later vote without asking again. Binding an approval to a
+  specific event needs a per-event registration step this registry does not model yet.
+- Director **identities are still disclosed**, because looking a director up in a public
+  ledger `Map` requires a public key. What the ZK layer buys here is **credential secrecy,
+  not voter anonymity**.
 
 ---
 
 ## Architecture
 
-### Why Fabric, and why BFT
-
-**Permissioned**, because positions must not be publicly readable and anonymous validators cannot be
-accountable under the Bank Companies Act. **Not Corda**, because point-to-point suits bilateral contracts.
-**Not Raft** — Raft is crash fault tolerant, it assumes nodes fail rather than lie, and our threat model
-explicitly includes collusion among consortium members.
-
-```mermaid
-flowchart TB
-    subgraph ORD["Ordering service · SmartBFT · tolerates f = 1"]
-        O0["orderer0<br/>Bangladesh Bank"]
-        O1["orderer1<br/>BIBM"]
-        O2["orderer2<br/>FRC"]
-        O3["orderer3<br/>bank seat A"]
-        O4["orderer4<br/>bank seat B"]
-    end
-
-    subgraph CH["Channels"]
-        C1["commitment<br/><i>BankA · BankB · BB · FRC</i>"]
-        C2["exposure<br/><i>BankA · BankB · BB</i>"]
-        C3["claims<br/><i>BankA · BB · FRC</i>"]
-    end
-
-    subgraph PEERS["Peer organisations"]
-        P1["peer0.banka<br/>Sammilito"]
-        P2["peer0.bankb<br/>Meghna"]
-        P3["peer0.bb<br/>Bangladesh Bank"]
-        P4["peer0.frc<br/>FRC · query only"]
-    end
-
-    ORD --> CH
-    CH --> PEERS
-
-    style ORD fill:#111111,color:#ffffff
-    style C1 fill:#e2fbec,stroke:#0a7a43
-```
-
-Five ordering nodes, so `n ≥ 3f+1` tolerates **f = 1**. Bangladesh Bank holds endorsement and querying rights
-on every channel **from genesis** and cannot be voted out. But endorsement and ordering are separate powers:
-it can refuse an event, and it cannot author a bank's record, rewrite a committed one, or decrypt an aggregate
-alone — and its own queries are logged.
-
-### On-chain and off-chain
-
 ```mermaid
 flowchart LR
-    subgraph ON["On the ledger"]
-        direction TB
-        A1["commitment hashes"]
-        A2["signed typed events"]
-        A3["authority evidence"]
-        A4["liability roots"]
-        A5["encrypted exposures"]
-        A6["claim tokens"]
+    subgraph WEB["Front end · Next.js"]
+        UI["Midnight portal<br/><i>/midnight</i>"]
     end
 
-    subgraph PDC["Private data collections"]
-        direction TB
-        B1["borrower reference"]
-        B2["exact amounts"]
-        B3["justification memos"]
+    subgraph BRIDGE["Back end · bridge service"]
+        W["Wallet + providers<br/><i>synced once at boot</i>"]
+        PS["Proof server<br/><i>localhost:6300</i>"]
     end
 
-    subgraph OFF["Off-chain, hash-anchored"]
-        direction TB
-        C1["loan agreements"]
-        C2["KYC and PII"]
-        C3["individual balances"]
-        C4["valuation reports"]
+    subgraph MN["Midnight Preview"]
+        CC["commitment.compact<br/><i>6 circuits</i>"]
+        L[("Ledger state<br/>loans · directors · config")]
     end
 
-    ON -->|hash only| PDC
-    ON -->|hash only| OFF
+    UI -->|HTTP| W
+    W -->|build proof| PS
+    PS -->|proof| W
+    W -->|proved tx| CC
+    CC --> L
+    L -->|indexer| W
 
-    style ON fill:#111111,color:#ffffff
-    style PDC fill:#e2fbec,stroke:#0a7a43
-    style OFF fill:#f1f0ea,stroke:#8b8a80
-```
-
-Borrower-group tokens are held as **attestations, never as record keys**, so no ledger query returns a
-borrower's identity.
-
-### The read model is a cache
-
-```mermaid
-flowchart LR
-    L[("Ledger<br/>source of truth")] -->|block events| LI["Listener"]
-    LI -->|re-reads authoritative state| L
-    LI --> RM[("PostgreSQL<br/>projection")]
-    RM --> Q["Queue · histogram<br/>reconciliation"]
-    L -->|SuperviseLoan<br/>costs a block, logged| D["One exposure"]
-
+    style CC fill:#e2fbec,stroke:#0a7a43
     style L fill:#111111,color:#ffffff
-    style RM fill:#f1f0ea,stroke:#8b8a80
 ```
 
-Peers run **LevelDB, not CouchDB** — rich queries belong in the projection. Press **Rebuild from block 0** in
-the supervisor portal and every projection is truncated and replayed: 830 exposures return in about 90
-seconds, BD-4471 still scoring 6.055. Nothing is lost, because nothing there was ever the record.
+The bridge is a **separate long-lived process**, and that is a structural decision rather
+than a stylistic one: a Midnight wallet must replay ledger history before it can sign
+anything, which takes minutes. It cannot be constructed per request. It syncs once at boot,
+caches its synced state to disk, and then serves circuit calls.
+
+### The contract
+
+`midnight/contracts/commitment/src/commitment.compact` — 6 circuits:
+
+| Circuit | Authority required |
+|---|---|
+| `originateLoan` | a bank (`BANK_A` / `BANK_B`) |
+| `appendEvent` | the institution that owns the loan, plus the event's own authority rule |
+| `registerDirector` | the bank itself — `role == institution` |
+| `confirmDirector` | Central Authority only — a bank cannot constitute its own board |
+| `revokeDirector` | Central Authority or the bank |
+| `setRegulatoryConfig` | a Regulatory Council member |
+
+`appendEvent` runs a decision table: a write-off, a third-or-later reschedule, and an
+upgrade out of a classified tier all escalate to `BOARD_THRESHOLD`. Everything else needs
+either one level above the sanctioning officer, MD/CEO authority, or nothing beyond the
+arithmetic.
+
+---
+
+## Run it
+
+Requires **Docker**, **Node 20+**, and — to compile the contract — **WSL2** on Windows,
+since the Compact toolchain has no native Windows build.
+
+### 1. Compile the contract
+
+```bash
+# inside WSL
+curl --proto '=https' --tlsv1.2 -LsSf \
+  https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+compact update 0.31.1          # pin: 0.34.0 speaks language 0.26 and rejects this contract
+
+cd midnight/contracts/commitment
+npm install
+npm run compact
+```
+
+> If `compact update` fails with *"Failed to spawn artifact extraction command"*, it is
+> shelling out to `unzip`, which some WSL images lack. Install it, or see
+> [the contract README](midnight/contracts/commitment/README.md) for a no-sudo workaround.
+
+### 2. Start the proof server
+
+```bash
+docker run -d -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
+```
+
+### 3. Deploy to Midnight Preview
+
+Run the deploy with no seed and it will generate one, print its address, and wait:
+
+```bash
+cd midnight/contracts/commitment
+MIDNIGHT_NETWORK=preview NODE_OPTIONS=--max-old-space-size=6144 npx tsx src/deploy.ts
+```
+
+Fund the printed address at **https://faucet.preview.midnight.network/**. The faucet is
+captcha-gated, so this step needs a browser — it cannot be scripted. The deploy resumes on
+its own and writes `deployment.preview.json`.
+
+> **The first sync takes tens of minutes** — it replays the whole ledger. The heartbeat
+> line reports progress; a climbing `dust=` number means it is working, not hung. After it
+> finishes, the wallet state is cached and every later start takes **seconds**.
+
+### 4. Start the bridge and the front end
+
+```bash
+# terminal 1
+cd midnight/contracts/commitment
+MIDNIGHT_NETWORK=preview MIDNIGHT_WALLET_SEED=<seed> npm run bridge
+
+# terminal 2  (repo root)
+npm install
+npm --prefix web run dev
+```
+
+Open <http://localhost:3000/midnight>.
+
+### 5. Verify it without clicking anything
+
+```bash
+node scripts/midnight-smoke.mjs
+```
+
+This drives the whole story over HTTP and **fails loudly if the write-off commits without
+board approval**. A run where that succeeds is a failure even though nothing threw — it
+would mean the threshold is not being enforced, which is the entire claim.
+
+Actual output against the live contract:
+
+```
+4. Attempt WRITE_OFF with 0 of 2 approvals (must be refused)
+   refused        board authorisation required: insufficient confirmed director signatures
+
+5. Resubmit with 2 approvals (must commit)
+   committed      00ccba624d4324ccc248423315fe101df617c5d951d41b1f07c4da710df8531623
+   block          580673
+
+PASSED — the same submission was refused without board approval and
+committed with it, and the approving credentials never reached the ledger.
+```
+
+---
+
+## The demonstration
+
+The `/midnight` page walks one story, and the interesting step is a refusal:
+
+1. **Set the rule.** Board threshold and reschedule cap are Council-governed ledger state,
+   not constants baked into the contract.
+2. **Constitute a board.** A director registers a commitment; only the Central Authority
+   can confirm them. Note this needs two different parties — the contract refuses a bank
+   that tries to confirm its own directors.
+3. **Originate a loan.**
+4. **Attempt a write-off with too few approvals.** The circuit refuses. The refusal comes
+   from the proof, not from the page — there is no front-end check to bypass.
+5. **Submit it again with enough approvals.** It commits, with a receipt naming the
+   network, contract, and block.
+
+See [DEMO.md](DEMO.md) for the full runbook.
+
+---
+
+## Engineering notes
+
+Four problems in this build were expensive enough to be worth recording. Full detail lives
+in [the contract README](midnight/contracts/commitment/README.md).
+
+**Wallet sync throughput.** A first-time sync replays every ledger event. The SDK's default
+batching walked the shielded stream at ~80 events/s — about five hours — and exhausted a
+6GB heap before finishing. The shielded wallet's config accepts a `batchSize`; at 5,000 the
+same scan runs at **~14,000 events/s with resident memory flat near 340MB**. That one
+number is the difference between "cannot sync at all" and "syncs in two minutes."
+
+**Preview vs PreProd.** The DUST wallet's batch size is **hardcoded at 10 events/tick**
+inside the SDK, so it cannot be tuned and runs at 60–280 events/s regardless:
+
+| Network | Stream length | First sync |
+|---|---|---|
+| Preview | ~151,000 events | tens of minutes — workable |
+| PreProd | ~1,453,000 events | over nine hours, and it exhausts memory first |
+
+Preview is therefore the default. The competition rules accept either.
+
+**Duplicate wasm instances.** Two installs of `@midnight-ntwrk/onchain-runtime-v3` — even
+at the *same version* — mean two wasm instantiations, and `instanceof` fails across them.
+The symptom is a bare `expected instance of StateValue` from deep inside a transaction
+merge. It needs one *hoisted* copy, not merely one version.
+
+**Windows file URLs.** `new URL(import.meta.url).pathname` keeps a leading slash on
+Windows, so `path.resolve` produces `G:\G:\…`. Everything derived from it silently pointed
+at a directory that does not exist, and the deploy failed *after* half an hour of syncing
+with an error about a missing verifier key that was sitting right there on disk. Use
+`fileURLToPath`. A `preflight()` check now catches this class of bug in two seconds.
 
 ---
 
 ## What is built, and what is not
 
-Kept current. We would rather state this than be asked.
+**Built and verified against the live contract**
+- `commitment.compact` — 6 circuits, real k-of-n board threshold proved in zero knowledge
+- Wallet / provider / deploy layer, with state caching so restarts are fast
+- Bridge service and Midnight portal, exercised end to end by the smoke test
 
-| Component | Status |
-|---|---|
-| Fabric v3 BFT network — 5 ordering orgs, 4 peer orgs, 3 channels | ✅ 21 containers |
-| Module I — lifecycle, k-of-n authority, statutory calendar | ✅ end to end · 41 tests |
-| Governance — Council parameters, quorum-gated change | ✅ end to end · verified live |
-| Private data collections | ✅ payload vs hash, by identity |
-| Module II — encrypted cross-bank exposure | ✅ end to end · alert at Tk 950 vs 625 crore |
-| Modules III and IV — signed leaves, claim tokens | ✅ end to end · 250 depositors, 8-step proof |
-| Cryptography — Paillier, Shamir, ceremony, Merkle sum | ✅ 43 tests |
-| EDI engine — equations (1) and (2), calibration | ✅ 32 tests |
-| Identities — 16 officers, CA-issued role attributes | ✅ enrolled |
-| CRL revocation | ✅ demonstrated end to end |
-| Mock CBS, read-only adapter, CL-1 reconciliation | ✅ omission check live |
-| Bank officer · supervisor · depositor portals | ✅ containerised, started by `up.sh` |
-| Rebuild from block 0 | ✅ exposed as a control |
-| Red-team suite | ✅ 8/8 verified live · **#9 (Board independence) awaiting an on-ledger run** |
-| Measured performance | ✅ 20.4 tx/s · [bench/RESULTS.md](bench/RESULTS.md) |
-| **Browser walk-through by a human** | ⏳ **not yet done** |
-| Demo runbook and video scripts | ✅ [DEMO.md](DEMO.md) · [VIDEO.md](VIDEO.md) |
-| State snapshot and restore | ✅ [scripts/snapshot.sh](scripts/snapshot.sh) · round trip verified |
-| **Recording the videos, poster panels, rehearsal** | ⏳ not started |
-| **Clean-clone run on a second machine, offline** | ⏳ not verified |
+**Honest gaps**
+- The `ONE_LEVEL_ABOVE` seniority check is still a placeholder (`assert(true, …)`).
+- Board approvals are replayable across events (see above).
+- The bridge asserts its own `callerRole` per endpoint. That is fine for a prototype where
+  one operator drives every party, but it is **not a security boundary** — production would
+  derive the role from the caller's own key.
+- Only the `commitment` module is ported. `exposure` (cross-bank encrypted exposure
+  aggregation) and `claims` (depositor claim tokens) exist **only** as the older Fabric
+  chaincode under `chaincode/` and are not part of the Midnight build.
+- The Fabric stack (`network/`, `services/api/`, `chaincode/`, `redteam/`) is the
+  predecessor prototype, retained for reference. It is **not** what this submission runs on.
 
-**Out of scope for this prototype, and deliberately so:**
-
-- **No zk-SNARK solvency circuit.** Designed in whitepaper §3.7.3; not built here, and we do not imply otherwise.
-- **No secondary transfer of claim tokens — not even a disabled button.** §7.4 #9 asserts no legal authority
-  for it. The chaincode refuses it and says why.
-- **No production HSM.** Officer keys use the same PKCS#11 interface as the FIPS 140-3 Level 3 target, not the
-  same assurance level.
-- **All data synthetic.** No real borrower, depositor or institutional data appears anywhere.
-- **λ and E\* are illustrative.** Council-set parameters, to be calibrated against the measured base rate.
-  **The EDI is a screening indicator that ranks exposures for supervisory attention, never a finding of
-  misconduct.**
-
-Not measured, and listed so nobody fills the gap with an assumption: ledger growth per million events, f = 2
-tolerance, p95 latency distribution, distributed topology, revocation latency.
+All data is synthetic. No real borrower, depositor, or institution appears anywhere, and
+institution names are placeholders.
 
 ---
 
-## Repository layout
+## Repository map
 
 ```
-network/      Fabric network — configtx, cryptogen, compose, control scripts
-chaincode/    Smart contracts, one package per channel (self-contained, not workspaces)
-packages/     Pure domain logic — EDI engine, Paillier, Shamir, Merkle sum tree
-services/     API gateway, block listener, read model, mock core banking system
-web/          Next.js — bank officer, supervisor and depositor portals
-seed/         Deterministic synthetic portfolios, including the Table 2 exposure
-scripts/      Deployment, seeding, and the module drivers
-redteam/      Eight attacks, eight expected refusals
-bench/        Measured performance, and what was NOT measured
-HANDOFF/      Phase notes — read the newest before picking work up
+midnight/contracts/commitment/
+  src/commitment.compact     the smart contract
+  src/api.ts                 wallet, providers, deploy/join, circuit calls
+  src/deploy.ts              deploy CLI -> deployment.<network>.json
+  src/bridge.ts              the back end
+  src/preflight.ts           fail-fast checks before the long sync
+  README.md                  build status, toolchain gotchas, threshold scope
+web/app/midnight/page.tsx    the Midnight portal
+web/lib/midnight.ts          bridge client
+scripts/midnight-smoke.mjs   end-to-end verification
+chaincode/ network/ services/  legacy Fabric prototype (not the submission)
 ```
-
-## Verify it yourself
-
-```bash
-npm test --workspaces          # 162 unit tests
-node redteam/run.mjs           # 8 attacks, 8 refusals
-bash redteam/orderer-fault.sh  # stop an orderer, commit anyway
-bash redteam/revoke.sh         # revoke a certificate, keep earlier events valid
-```
-
----
-
-## Team
-
-| Member | Responsibility |
-|---|---|
-| *[name]* | Architecture, consensus design — Fabric network, BFT, benchmark |
-| *[name]* | Cryptography — authority evidence, Paillier, Merkle sum tree |
-| *[name]* | Smart contracts and data model |
-| *[name]* | Banking regulation and domain research |
-| *[name]* | Market analysis and business model |
-| *[name]* | Verification interface design and documentation |
 
 ## Licence
 

@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "compact": "compact compile src/commitment.compact src/managed/commitment",
-    "deploy:preprod": "tsx src/deploy.ts"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "deploy": "tsx src/deploy.ts",
+    "bridge": "tsx src/bridge.ts"
   },
   "dependencies": {
+    "@fastify/cors": "^10.1.0",
     "@midnight-ntwrk/compact-runtime": "0.16.0",
     "@midnight-ntwrk/ledger-v8": "8.1.0",
     "@midnight-ntwrk/midnight-js": "^4.0.4",
@@ -15,12 +18,14 @@
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "^4.0.4",
     "@midnight-ntwrk/midnight-js-level-private-state-provider": "^4.0.4",
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "^4.0.4",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
     "@midnight-ntwrk/wallet-sdk-address-format": "^3.0.0",
     "@midnight-ntwrk/wallet-sdk-dust-wallet": "^3.0.0",
     "@midnight-ntwrk/wallet-sdk-facade": "^3.0.0",
     "@midnight-ntwrk/wallet-sdk-hd": "^3.0.0",
     "@midnight-ntwrk/wallet-sdk-shielded": "^2.0.0",
     "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "^2.0.0",
+    "fastify": "^5.12.1",
     "rxjs": "^7.8.1",
     "ws": "^8.20.1"
   },
@@ -30,5 +35,8 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.23.12",
     "typescript": "^5.7.2"
+  },
+  "overrides": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
   }
 }

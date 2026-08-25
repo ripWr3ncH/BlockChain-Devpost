@@ -107,7 +107,7 @@ console.log(
 
 // ── 3 ──────────────────────────────────────────────────────────────────────
 console.log('  3. Commit the root — balances stay off-chain');
-const totalTaka = (Number(tree.rootSum) / 100).toLocaleString('en-BD', { maximumFractionDigits: 0 });
+const totalCommitted = (Number(tree.rootSum) / 100).toLocaleString('en-US', { maximumFractionDigits: 0 });
 
 let r = await call('/liability/roots', 'officer-rahim', 'POST', {
   period: PERIOD,
@@ -119,7 +119,7 @@ let r = await call('/liability/roots', 'officer-rahim', 'POST', {
 if (r.status >= 400) fail('committing the liability root', r);
 
 console.log(`     root       ${tree.root.slice(0, 40)}…`);
-console.log(`     committed  $${totalTaka} across ${tree.size} depositors`);
+console.log(`     committed  $${totalCommitted} across ${tree.size} depositors`);
 console.log(`     block      ${r.body.receipt.blockNumber}`);
 console.log(
   `     ${C.dim}the rejected count is committed too — a bank cannot quietly drop\n` +

@@ -2,7 +2,7 @@
   "name": "verity",
   "version": "0.1.0",
   "private": true,
-  "description": "VERITY — making loan classification tamper-evident. BCOLBD 2026 prototype, Team Logarithm.",
+  "description": "VERITY — making loan classification tamper-evident. Brainwave 2026 · Midnight Track prototype, Team Logarithm.",
   "license": "MIT",
   "engines": {
     "node": ">=20"

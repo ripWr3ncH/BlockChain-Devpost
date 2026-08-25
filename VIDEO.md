@@ -1,5 +1,14 @@
 # Verity — video scripts
 
+> **Stale in one respect: written for the Hyperledger Fabric build, before the Midnight
+> port.** The framing, timings, and recording advice below still apply, but the on-screen
+> flow does not — the demo now runs against a Compact contract on Midnight Preview via the
+> bridge service, not against a Fabric network. Use **[DEMO.md](DEMO.md)** for what to
+> actually show and say; use this file for production logistics only.
+>
+> Brainwave 2026 also makes a demo video a **submission requirement**, not the optional
+> insurance the paragraph below describes.
+
 Two recordings, both insurance rather than a rules requirement. The prototype round's mandatory criteria are
 a front-end and a back-end that writes to a blockchain; the 10-minute pitch video belonged to the proposal
 round.

@@ -90,6 +90,34 @@ export ledger directors: Map<Bytes<32>, DirectorRecord>;
 export ledger centralAuthority: Role;
 
 // --------------------------------------------------------------------------
+//  Genesis
+// --------------------------------------------------------------------------
+
+// Without this, every ledger field starts at its zero value, and the failure is
+// silent rather than loud: `councilMembers` would be empty, so setRegulatoryConfig
+// could never pass its own membership check and `config` could never be set at all.
+// `boardThresholdK` would then stay 0 forever, which makes verifyBoardThreshold's
+// `validCount >= 0` trivially true — the board threshold would be unenforceable
+// while still LOOKING enforced. The deploying party seeds the parameters and the
+// council here so the contract is governable from its first block.
+constructor(
+  rescheduleCapOccasions: Uint<8>,
+  boardEscalationFromAttempt: Uint<8>,
+  boardThresholdK: Uint<8>,
+  councilQuorum: Uint<8>
+) {
+  config = RegulatoryConfig {
+    rescheduleCapOccasions: disclose(rescheduleCapOccasions),
+    boardEscalationFromAttempt: disclose(boardEscalationFromAttempt),
+    boardThresholdK: disclose(boardThresholdK),
+    councilQuorum: disclose(councilQuorum)
+  };
+  councilMembers.insert(Role.REGULATORY_COUNCIL);
+  councilMembers.insert(Role.CENTRAL_AUTHORITY);
+  centralAuthority = Role.CENTRAL_AUTHORITY;
+}
+
+// --------------------------------------------------------------------------
 //  Witnesses — private inputs, never written to the public ledger
 // --------------------------------------------------------------------------
 
@@ -97,9 +125,15 @@ export ledger centralAuthority: Role;
 // and disclosed here only where a check requires it.
 witness callerRole(): Role;
 
-// Up to 4 director signatures over the event hash, supplied privately. Only
-// the COUNT that verifies against confirmed, non-revoked directors is disclosed.
+// Up to 4 director approval secrets for this event, supplied privately. Only the
+// COUNT that verifies against confirmed, non-revoked directors is disclosed — the
+// secrets themselves never leave the witness.
 witness boardSignatures(eventHash: Bytes<32>): Vector<4, Maybe<Bytes<32>>>;
+
+// The director key ids the above secrets correspond to, slot for slot. These ARE
+// disclosed: the `directors` registry is public ledger state and a Map lookup needs
+// a public key, so the circuit cannot check a slot without naming the director.
+witness boardKeyIds(eventHash: Bytes<32>): Vector<4, Bytes<32>>;
 
 // --------------------------------------------------------------------------
 //  Origination
@@ -165,7 +199,7 @@ export circuit appendEvent(
   const evHash = persistentHash<Vector<3, Bytes<32>>>([id, prevHash, pHash]);
 
   if (required == AuthorityKind.BOARD_THRESHOLD) {
-    verifyBoardThreshold(evHash);
+    verifyBoardThreshold(evHash, loan.institution);
   } else if (required == AuthorityKind.ONE_LEVEL_ABOVE) {
     // TODO: compare caller seniority (from a seniority witness/credential) to
     // loan.sanctioningSeniority once the seniority credential is wired up.
@@ -213,20 +247,60 @@ circuit requiredAuthority(
   return AuthorityKind.MECHANICAL; // RECLASSIFY_DOWN, RECOVERY, LC_DEVOLVEMENT
 }
 
-// k-of-n board threshold, proved in zero knowledge: the signatures themselves
-// are a private witness (boardSignatures); only whether >= config.boardThresholdK
-// of them verify against CONFIRMED, non-revoked directors is disclosed on-chain.
-// This is a strict privacy improvement over the Fabric version, which put every
-// director's signature in the cleartext transaction argument.
+// Does this slot carry a real approval from a confirmed, non-revoked director of
+// `inst`? A director registers publicKeyCommitment = persistentHash([secret]); to
+// approve they supply that secret privately, and the circuit re-derives the hash and
+// compares it to the registry. The secret is never disclosed, so the chain records
+// that a director approved without ever learning the approving credential itself.
 //
-// TODO: this only proves a count was disclosed, not yet that the count reflects
-// real, distinct, confirmed director signatures — that requires iterating
-// boardSignatures against the `directors` map inside the circuit. Compact's
-// Vector/Map iteration idioms need a follow-up pass against the compiler (this
-// file compiles, but verifyBoardThreshold is not yet a real k-of-n check).
-circuit verifyBoardThreshold(eventHash: Bytes<32>): [] {
+// Scope of the guarantee, stated plainly: this proves knowledge of the preimage of a
+// registered commitment. It is not a signature over the event, so a bank that has
+// collected a director's secret once could reuse it to satisfy a later board vote
+// without asking again. Binding an approval to a specific event needs the director to
+// hash their secret together with the event hash, which requires a per-event
+// registration step this contract's registry does not model yet — a real limitation,
+// not a solved problem.
+circuit checkBoardSlot(
+  slot: Maybe<Bytes<32>>,
+  keyId: Bytes<32>,
+  inst: Role
+): Boolean {
+  if (!disclose(slot.is_some)) { return false; }
+  const key = persistentHash<Vector<2, Bytes<32>>>([roleHash(inst), keyId]);
+  if (!directors.member(key)) { return false; }
+  const rec = directors.lookup(key);
+  const derived = persistentHash<Vector<1, Bytes<32>>>([slot.value]);
+  return rec.confirmed && !rec.revoked && derived == rec.publicKeyCommitment;
+}
+
+// k-of-n board threshold. The Fabric version put every director's signature in the
+// cleartext transaction argument; here the approval secrets stay in the witness and
+// only the pass/fail count reaches the ledger. Director identities are still
+// disclosed — a public Map lookup needs a public key — so what this buys over Fabric
+// is credential secrecy, not voter anonymity.
+circuit verifyBoardThreshold(eventHash: Bytes<32>, inst: Role): [] {
   const sigs = boardSignatures(eventHash);
-  const validCount: Uint<8> = 0;
+  const ids = boardKeyIds(eventHash);
+
+  const k0 = disclose(ids[0]);
+  const k1 = disclose(ids[1]);
+  const k2 = disclose(ids[2]);
+  const k3 = disclose(ids[3]);
+
+  const g0 = checkBoardSlot(sigs[0], k0, inst);
+  const g1 = checkBoardSlot(sigs[1], k1, inst);
+  const g2 = checkBoardSlot(sigs[2], k2, inst);
+  const g3 = checkBoardSlot(sigs[3], k3, inst);
+
+  // One director cannot fill two slots to reach the threshold alone.
+  assert(!(g0 && g1 && k0 == k1), "duplicate director approval");
+  assert(!(g0 && g2 && k0 == k2), "duplicate director approval");
+  assert(!(g0 && g3 && k0 == k3), "duplicate director approval");
+  assert(!(g1 && g2 && k1 == k2), "duplicate director approval");
+  assert(!(g1 && g3 && k1 == k3), "duplicate director approval");
+  assert(!(g2 && g3 && k2 == k3), "duplicate director approval");
+
+  const validCount = ((g0 ? 1 : 0) + (g1 ? 1 : 0) + (g2 ? 1 : 0) + (g3 ? 1 : 0)) as Uint<8>;
   assert(disclose(validCount) >= config.boardThresholdK, "board authorisation required: insufficient confirmed director signatures");
 }
 

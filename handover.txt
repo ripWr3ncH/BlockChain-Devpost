@@ -1,191 +1,198 @@
 VERITY — HANDOVER NOTES
-Written: 2026-08-25
+Written: 2026-08-25, revised 2026-08-26
 Context: migrating from the BD-specific "BCOLBD 2026" competition build to the
 international "Brainwave 2026 – Midnight Track" (see requirements.txt at repo root
 for the scraped competition rules).
 
+The 2026-08-26 revision reflects a session that rebuilt the toolchain from scratch,
+made the board-threshold check real, and got the wallet sync unblocked. Several
+claims in the previous revision turned out to be wrong; those are called out below
+rather than quietly edited, because knowing WHICH notes to distrust matters.
+
+
+============================================================================
+0. CORRECTIONS TO THE PREVIOUS HANDOVER
+============================================================================
+
+- "Genericization ... verified clean ... zero remaining hits" was NOT true outside
+  the docs. Still BD-specific and now fixed: package.json's description ("BCOLBD
+  2026 prototype"), seed/src/cli.ts's default seed ('verity-bcolbd-2026'), and
+  scripts/run-liability-commitment.mjs (`totalTaka`, 'en-BD' locale). Still BD-
+  specific and NOT fixed, because they are Fabric-only and slated for deletion:
+  network/ and redteam/ orderer domains (ord-bibm, ord-bb, ord-frc — these are
+  Bangladesh Institute of Bank Management / Bangladesh Bank / Financial Reporting
+  Council). README.md remains fully BD- and Fabric-framed, which is a live
+  submission risk — see section 2.
+
+- "`npx tsc --noEmit` ... passes with ZERO type errors" was not a real check. The
+  package had NO tsconfig.json, so tsc printed its help text and exited 0 without
+  compiling anything. A tsconfig.json now exists; with it, the file that the notes
+  described as type-clean immediately produced two genuine errors.
+
+- "compiled successfully with compact 0.31.1" is true, but `compact update` with no
+  version now installs 0.34.0, which speaks language version 0.26 and REJECTS this
+  contract outright. Pin 0.31.1.
 
 
 ============================================================================
 1. WHAT'S DONE
 ============================================================================
 
-A) Genericization (BD -> international) — DONE, verified clean.
-   Every Bangladesh-specific reference across the whole app codebase was renamed:
-   - "Bangladesh Bank" -> "Central Authority", BangladeshBankMSP -> CentralAuthorityMSP
-   - FRC/BIBM -> "Regulatory Council", Sammilito/Meghna -> "Bank A"/"Bank B"
-   - BRPD NN/YYYY regulation citations -> generic "Regulation A/B/C" labels
-   - Taka/crore/poisha/lakh currency -> USD-style $/millions formatting
-   - .verity.bd domain suffix -> .verity.local
-   - "BCOLBD 2026" branding in web UI -> "Brainwave 2026 · Midnight Track"
-   Verified via repeated repo-wide grep sweeps across chaincode/, services/, web/,
-   packages/, seed/, scripts/, network/, redteam/ — zero remaining hits.
-   Docs (README.md, DEMO.md, VIDEO.md, HANDOFF/, bench/RESULTS.md) were
-   DELIBERATELY left untouched — out of scope per original instructions, still
-   BD-flavored, will need a separate pass whenever docs get updated.
+A) Compact toolchain — rebuilt from scratch on this machine, compiles clean.
+   - `compact update` shells out to `unzip`, which this WSL image lacks, and sudo
+     needs a password. Symptom: "Failed to spawn artifact extraction command".
+     Worked around with a python3 zipfile shim at ~/.local/bin/unzip that also
+     restores each entry's mode from external_attr — a plain extractall drops the
+     exec bit and the extracted compactc will not run.
+   - Pin the compiler: `compact update 0.31.1`. If a version dir exists but compile
+     says "Expecting a file: .../compactc", the artifact downloaded but never
+     unpacked; extract artifact.zip in place.
+   - WSL mounts this repo at /mnt/g/KUET/... (the old notes said /mnt/e).
+   - Driving WSL from Windows: `$HOME` and shell vars get mangled through
+     `wsl.exe -- bash -c '...'`. Write a .sh file and run `bash /tmp/x.sh` instead.
 
-B) Compact smart contract for the "commitment" module (loan lifecycle + board
-   authority + director registry + governance) — COMPILES, real toolchain-verified.
-   Location: midnight/contracts/commitment/src/commitment.compact
-   - Ported from chaincode/commitment/src/{contracts/lifecycle.ts,governance.ts,
-     accesslog.ts, domain/authority.ts} (the old Hyperledger Fabric chaincode).
-   - Regulatory rules (reschedule cap, board-escalation threshold, etc.) are now a
-     Council-governed `RegulatoryConfig` ledger struct instead of hardcoded BRPD
-     citations — this IS the genericization applied to contract logic, not just text.
-   - Director board-approval signatures are a private witness (`boardSignatures`)
-     rather than submitted in cleartext like the old Fabric version — a real privacy
-     improvement, worth highlighting to judges.
-   - Compiled successfully with `compact 0.31.1` (language version 0.23), installed
-     via WSL Ubuntu (Windows isn't natively supported by the Compact toolchain):
-       curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
-       compact update
-       compact compile src/commitment.compact src/managed/commitment
-   - Output (6 circuits: originateLoan, appendEvent, registerDirector,
-     confirmDirector, revokeDirector, setRegulatoryConfig) with prover/verifier
-     keys + zkir + a generated TS contract binding lives under
-     midnight/contracts/commitment/src/managed/commitment/ — THIS DIRECTORY IS
-     GITIGNORED (regenerable, large binaries) so it will NOT be there after a
-     fresh clone. Regenerate it with the compact compile command above before
-     doing anything else.
+B) verifyBoardThreshold — now a REAL k-of-n check (was a stub).
+   The old version hardcoded validCount = 0, so every board-authorised transition
+   asserted `0 >= boardThresholdK` and could NEVER commit. Write-off, a third-plus
+   reschedule, and an upgrade out of a classified tier were all impossible. It now
+   counts confirmed, non-revoked, distinct directors whose registered commitment
+   matches the preimage supplied in the witness, and discloses only the count.
+   Honest scope, also written into the contract's own comments: it proves knowledge
+   of a registered commitment's preimage, NOT a signature over the event, so a bank
+   holding a director's secret could reuse it for a later vote. Director identities
+   are still disclosed (a public Map lookup needs a public key) — what the ZK layer
+   buys is credential secrecy, not voter anonymity.
 
-C) Wallet/provider/deploy API layer — type-checks against the REAL installed SDK,
-   not yet run to a successful live deploy.
-   Location: midnight/contracts/commitment/src/{witnesses,config,common-types,api,deploy}.ts
-   - Adapted from midnightntwrk/example-counter's real, working counter-cli
-     (fetched from GitHub, reference copy kept at midnight/reference/ for
-     comparison — read those files if something here looks wrong, they're the
-     ground truth this was adapted from).
-   - `npm install` in midnight/contracts/commitment/ resolves real
-     @midnight-ntwrk/* packages, and `npx tsc --noEmit` against them passes with
-     ZERO type errors. Two real bugs were caught and fixed this way:
-       1. an off-by-one relative import path to the compiled contract module
-       2. a duplicate @midnight-ntwrk/ledger-v8 version across the dependency
-          tree (our direct dep vs. the one midnight-js-protocol pins internally)
-          — fixed by pinning ours to the exact version (8.1.0) it expects so npm
-          dedupes to one copy.
-   - `deploy.ts` generates a fresh Preprod wallet (or restores one from
-     $MIDNIGHT_WALLET_SEED), waits for it to sync + get funded via the faucet,
-     registers funds for DUST (fee token) generation, then deploys the contract.
+C) Wallet sync — this was the real blocker, and it is now understood.
+   A first-time sync replays the entire ledger. Two separate problems:
+   - THROUGHPUT: the SDK's default batching walked Preprod's shielded stream at
+     ~80 events/s (about five hours) and blew a 6GB heap at index ~83k. The
+     shielded wallet's config accepts `batchSize`; at 5,000 the same scan runs at
+     ~14,000 events/s with RSS flat near 340MB. Now set in api.ts.
+   - WHAT "SYNCED" MEANS: FacadeState.isSynced ANDs all three wallets. Deploying
+     only spends unshielded NIGHT and the DUST it generates, so api.ts now gates on
+     those two and lets the shielded scan finish in the background. The completion
+     predicate compares appliedIndex to **highestRelevantWalletIndex**, not
+     highestIndex — highestIndex reads 0 until the stream reports a target, which
+     is exactly why a working sync looked hung in the previous session.
+
+D) Network switched to PREVIEW, and this is a measured decision, not a preference.
+   The DUST wallet's sync is the binding constraint: its batch size is HARDCODED at
+   10 events/tick inside the SDK (wallet-sdk-dust-wallet/dist/v1/Sync.js), so it
+   cannot be tuned and runs at roughly 60-280 events/s regardless.
+     Preprod stream: ~1,453,000 events  -> over nine hours, and it OOMs first.
+     Preview stream:   ~151,000 events  -> tens of minutes. Feasible.
+   requirements.txt allows either network. MIDNIGHT_NETWORK=preview|preprod|
+   standalone now selects it (default preview); deploy writes
+   deployment.<network>.json.
+   DEAD END, do not retry: restoring a wallet at a non-zero `offset` to skip
+   history fails — the commitment trees must be built linearly and the ledger
+   rejects it with "values inserted non-linearly into dust commitment tree".
+
+E) Bridge service (src/bridge.ts) — the Midnight back end, type-checks clean.
+   It is a SEPARATE long-lived process for a structural reason: the wallet must
+   replay ledger history before it can sign, which takes minutes, so it cannot be
+   built per request. It syncs once at boot, holds the wallet + providers, and
+   serves circuit calls over HTTP. Endpoints: /health, /contract, /loans, /events,
+   /directors/{provision,register,confirm,revoke}, /config.
+
+F) Frontend (web/app/midnight/page.tsx + web/lib/midnight.ts) — written, NOT yet
+   run. Drives the whole demo: set the rule, constitute a board, originate, then
+   attempt a write-off with too few approvals (circuit refuses) and again with
+   enough (commits, with a receipt).
+
 
 ============================================================================
 2. WHAT'S NOT DONE — YOUR STARTING POINT
 ============================================================================
 
-A) LOCAL/LIVE DEPLOY TESTING — NOT COMPLETED. This is the main thing left to you.
-   What happened so far:
-   - A throwaway Preprod wallet was generated and FUNDED via the faucet
-     (https://faucet.preprod.midnight.network/ — 1000 tNight received,
-     tx id 0007caddbff07838e4325428dde1c8896f245bd1bb96dc085db32e94552dcbadc2).
-     Seed (Preprod testnet only, worthless outside it, fine to keep here):
-       3a81a766ac8bedfc91f73e39da8adba2c4530404b9ad04b384169c0895c03a99
-     Its address:
-       mn_addr_preprod1cvfuxhr7mhhyfngxx3xg6dcyy9z0pdnvnn0qftfvtdvf5m3zdcksmm2a5g
-   - First run attempt hit `FATAL ERROR: JavaScript heap out of memory` during
-     wallet sync (Node's default ~2GB heap wasn't enough). Fix: run with a larger
-     heap, e.g.:
-       PowerShell:
-         $env:NODE_OPTIONS="--max-old-space-size=6144"
-         $env:MIDNIGHT_WALLET_SEED="3a81a766ac8bedfc91f73e39da8adba2c4530404b9ad04b384169c0895c03a99"
-         npx tsx src/deploy.ts
-       bash:
-         NODE_OPTIONS="--max-old-space-size=6144" MIDNIGHT_WALLET_SEED=3a81a766ac8bedfc91f73e39da8adba2c4530404b9ad04b384169c0895c03a99 npx tsx src/deploy.ts
-   - Needs the local proof server running first (separate terminal / background):
-       docker run -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
-   - The last run got interrupted by an unrelated session restart before it could
-     finish syncing — NOT a code failure, just never got to run to completion. The
-     wallet+provider code itself had not thrown any error at that point.
-   - The script currently gives NO console output between "connecting" and
-     "synced", so a long silent wait can look identical to a hang. If it's
-     genuinely stuck for a long time (10+ minutes with no CPU/memory activity),
-     that's worth investigating; if memory/CPU is climbing, it's still working
-     (first-time historical sync against Preprod can be slow). Worth adding a
-     periodic heartbeat log using the wallet state's `.shielded.progress` /
-     `.unshielded.progress` fields (type `SyncProgress`, has `appliedIndex`,
-     `highestIndex`, `isConnected` etc. — see
-     node_modules/@midnight-ntwrk/wallet-sdk-abstractions/dist/SyncProgress.d.ts)
-     if you want better visibility before running this again.
-   - Once `deploy.ts` succeeds, it prints the deployed contract address — save
-     that, it's needed for `joinContract` calls later (e.g. from services/api).
+A) [DONE] THE DEPLOY — COMPLETE AND VERIFIED END TO END.
+   Contract on Midnight Preview:
+     6fcd40645315980824c02a865e9601b206a3d0702ecf4ea8044a9fd950d67a2b
+   `node scripts/midnight-smoke.mjs` passes: the same WRITE_OFF was refused with 0
+   director approvals and committed at block 580673 with 2, and the approving
+   secrets never reached the ledger. Wallet funded with 5000 tNight, tx
+   0010bfb5bed15c599b6f56f3e62cc1b15a8c9fba61d83c592d43b86040edcc1c63.
+   The seed now lives in .env at the repo root (gitignored), NOT in this file —
+   handover.txt is tracked, so a seed written here ends up in git history. It is a
+   throwaway Preview seed and worthless elsewhere, but there is no reason to commit it.
+   Preview address:
+     mn_addr_preview1cvfuxhr7mhhyfngxx3xg6dcyy9z0pdnvnn0qftfvtdvf5m3zdcksm65d84
+   The Preview faucet is Cloudflare-Turnstile gated (POST /api/drips returns
+   "Missing X-Captcha-Token"), so funding needs a human in a browser — it cannot
+   be scripted.
+   Run it with:
+     docker run -d -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
+     cd midnight/contracts/commitment
+     MIDNIGHT_NETWORK=preview MIDNIGHT_WALLET_SEED=<seed> NODE_OPTIONS=--max-old-space-size=6144 npx tsx src/deploy.ts
 
-B) verifyBoardThreshold is a STUB, not real yet.
-   File: midnight/contracts/commitment/src/commitment.compact (search for
-   verifyBoardThreshold). It compiles, but `validCount` is hardcoded to 0 rather
-   than actually iterating the `boardSignatures` witness against the `directors`
-   ledger map to count valid, confirmed, non-revoked, distinct signatures. This
-   needs a real k-of-n loop — Vector/Map iteration syntax in Compact needs
-   confirming against `compact compile --help` / the stdlib docs, then
-   re-verified by actually compiling.
+B) [PARTLY DONE] The bridge and every circuit have now been exercised against the
+   live contract via scripts/midnight-smoke.mjs — deploy, register/confirm director,
+   originate, refused write-off, committed write-off. The /events board-approval
+   ordering IS tested and works.
+   STILL UNTESTED: the web UI at /midnight has never been rendered in a browser. It
+   type-checks and `next build` succeeds, and it talks to the same endpoints the
+   smoke test exercises, but no one has clicked it.
 
-C) sanctioningSeniority / ONE_LEVEL_ABOVE authority check is a placeholder
-   (`assert(true, ...)` in appendEvent) — needs a real seniority credential or
-   witness wired in, mirroring the old Fabric version's `ctx.callerSeniority`
-   check.
+C) [DONE] Docs rewritten Midnight-first: README.md (full rewrite, live contract
+   address, engineering notes, honest gaps), DEMO.md (rebuilt around the refusal),
+   midnight/contracts/commitment/README.md. VIDEO.md carries a header flagging it as
+   pre-Midnight and pointing at DEMO.md — it was not rewritten.
+   STILL TO DO: record the actual demo video (a submission requirement).
 
-D) `exposure` and `claims` contracts — NOT PORTED AT ALL YET.
-   Only `commitment` (one of the three original Fabric channels) has a Compact
-   port. `exposure` (cross-bank Paillier-encrypted exposure aggregation) and
-   `claims` (liability roots + depositor claim tokens) still only exist as the
-   old Fabric TypeScript chaincode under chaincode/exposure/ and chaincode/claims/.
-   Given time constraints, get `commitment` fully working and deployed end-to-end
-   first — a single genuinely-working, deployed contract is a stronger submission
-   than three half-finished ones.
+D) sanctioningSeniority / ONE_LEVEL_ABOVE is still `assert(true, ...)` in
+   appendEvent — a placeholder, unchanged from the previous session.
 
-E) services/api (the actual Fastify backend) has NOT been wired up to call the
-   new Midnight contract. midnight/contracts/commitment/src/api.ts is a
-   standalone module with deploy/join/circuit-call functions — it is not yet
-   imported or called from services/api/src/server.ts. That server still talks
-   to the old Fabric gateway (services/api/src/gateway.ts). Wiring this up is
-   the next big step after local deploy is confirmed working.
+E) Board approvals are replayable across events (see 1B). Fixing it needs a
+   per-event registration step the registry does not model.
 
-F) web/ frontend has no wallet-connect UI yet (Lace wallet integration). Also
-   still calls the old services/api endpoints, which still assume Fabric.
+F) `exposure` and `claims` contracts are still NOT ported — only `commitment` has a
+   Compact version. Previous handover's advice still stands: one genuinely working
+   deployed contract beats three half-finished ones.
 
-G) network/ (the old Hyperledger Fabric Docker Compose setup, 5 orderers + 4
-   peers + CAs) has NOT been removed. Leave it until the Midnight side is
-   confirmed working end-to-end, then it's safe to delete along with
-   chaincode/ (once each piece has a verified Compact replacement) and
-   redteam/*.sh (Fabric-orderer-specific attack scripts).
+G) services/api (Fastify) still talks to the Fabric gateway and has NOT been wired
+   to Midnight. The bridge supersedes it for the Midnight path; decide whether
+   services/api is retired or proxies to the bridge.
+
+H) network/ (Fabric compose), chaincode/, redteam/*.sh are all still present.
+
 
 ============================================================================
-3. GOTCHAS HIT DURING THIS WORK (so you don't re-discover them the hard way)
+3. GOTCHAS (cumulative — earlier ones still valid unless corrected in §0)
 ============================================================================
 
-- Compact toolchain does NOT support Windows natively — install/run it under WSL
-  (Ubuntu). `compact compile` was run from WSL against the same files (WSL mounts
-  the Windows E: drive at /mnt/e/...), so you can keep editing from Windows and
-  just shell into WSL to compile.
-- The compiled contract's `contract-info.json` / runtime pins an EXACT
-  `@midnight-ntwrk/compact-runtime` version it expects (currently 0.16.0). If you
-  recompile the .compact file with a newer `compact` CLI version, that expected
-  runtime version may bump — check midnight/contracts/commitment/package.json's
-  compact-runtime pin still matches, or you'll get a clear
-  `CompactError: Version mismatch: compiled code expects X, runtime is Y` — that
-  error is fine and expected to guide you, just bump the package.json version and
-  `npm install` again.
-- @midnight-ntwrk/ledger-v8 must be pinned EXACTLY (not `^8.0.0`) to whatever
-  version @midnight-ntwrk/midnight-js-protocol expects internally, or npm
-  installs two incompatible copies and TypeScript throws confusing "two
-  different types with this name exist" errors. Currently pinned to 8.1.0 —
-  if you bump midnight-js-protocol, re-check this.
-- Errors thrown by the Midnight SDK are "effect" library tagged objects with a
-  custom Node inspect symbol and null prototype — Node's default top-level
-  uncaught-exception printer chokes on them and shows almost nothing useful
-  (`[Object: null prototype] { [Symbol(nodejs.util.inspect.custom)]: ... }`).
-  deploy.ts already wraps its main() in a .catch that force-prints with
-  `util.inspect(err, {depth:10, customInspect:true})` — if you write more
-  scripts against this SDK, do the same or you'll be debugging blind.
-- Use `tsx` to run these TS/ESM files, not `ts-node/esm` — the counter example
-  reference uses ts-node/esm but it threw an opaque, unhelpful crash on this
-  machine's Node 22; tsx worked and is already what package.json's
-  `deploy:preprod` script uses.
-- PowerShell env vars are `$env:NAME="value"` on their own line before the
-  command, NOT `NAME=value command` (that's bash syntax) — easy to trip on if
-  you're copy-pasting between shells.
-- The faucet (https://faucet.preprod.midnight.network/) occasionally fails with
-  "Failed to prove transaction" — just retry, it's flaky infra, not something on
-  our end. An alternate faucet URL was mentioned in some doc summarization
-  (midnight-tmnight-preprod.nethermind.dev) but only the one above has been
-  confirmed to actually work.
+- Midnight SDK errors are "effect" tagged objects with a null prototype; Node's
+  default printer shows almost nothing. deploy.ts and bridge.ts both force
+  util.inspect(err, {depth:10, customInspect:true}). Do the same in new scripts.
+- Use `tsx`, not ts-node/esm.
+- @midnight-ntwrk/ledger-v8 must be pinned EXACTLY (8.1.0) to what
+  midnight-js-protocol expects, or TS reports confusing "two different types with
+  this name" errors.
+- The compiled contract pins an exact compact-runtime version. contract-info.json
+  currently records runtime-version 0.16.0, which matches what the whole npm tree
+  dedupes to. Re-check this if you ever bump the compiler.
+- PowerShell env vars are `$env:NAME="value"` on their own line, not bash's
+  `NAME=value cmd`.
+- Do NOT pipe a long-running node script through `grep` when capturing output —
+  the pipe fully buffers and you see nothing until it exits. Redirect to a file.
+- Windows: `new URL(import.meta.url).pathname` yields "/G:/..." and path.resolve then
+  produces "G:\G:\...". Use fileURLToPath. This cost a full 30-minute sync before
+  failing with a misleading "cannot read verifier key". src/preflight.ts now checks
+  the compiled assets and the proof server BEFORE the sync starts.
+- Two installs of @midnight-ntwrk/onchain-runtime-v3 break `instanceof` even at the
+  SAME version (two wasm instantiations). Symptom: "expected instance of StateValue".
+  It must be one HOISTED copy — an `overrides` entry alone left two nested installs;
+  adding it as a direct dependency fixed it. Verify with
+  `npm ls @midnight-ntwrk/onchain-runtime-v3`.
+- When testing a fix, actually restart the bridge. A stale process keeps the old
+  node_modules in memory and will reproduce a bug you have already fixed. Kill by
+  port (PowerShell Get-NetTCPConnection -LocalPort 8090) — pkill from git-bash does
+  not reliably kill it.
+- persistentHash in TS needs a runtime type descriptor:
+  persistentHash(new CompactTypeVector(1, new CompactTypeBytes(32)), [secret])
+  matches the contract's persistentHash<Vector<1, Bytes<32>>>([x]). The bridge
+  derives director commitments this way so browser and circuit cannot drift.
+
 
 ============================================================================
 4. WHERE THINGS LIVE (quick map)
@@ -193,42 +200,17 @@ G) network/ (the old Hyperledger Fabric Docker Compose setup, 5 orderers + 4
 
 requirements.txt              — scraped Brainwave 2026 Midnight Track rules
 midnight/contracts/commitment/
-  src/commitment.compact       — the actual smart contract source
-  src/witnesses.ts             — private witness implementations (callerRole, boardSignatures)
-  src/config.ts                — network configs (Standalone/Preview/Preprod)
-  src/common-types.ts          — midnight-js type wiring for this contract
-  src/api.ts                   — wallet/provider setup + deploy/join/circuit-call functions
-  src/deploy.ts                — CLI entry point to deploy to Preprod
-  README.md                    — build status notes (compile command, known gaps)
-  package.json                 — real, resolvable @midnight-ntwrk/* dependency versions
-midnight/reference/            — real reference source pulled from
-                                  midnightntwrk/example-counter on GitHub; compare
-                                  against this if adapting the exposure/claims
-                                  contracts or something here seems off
-chaincode/                     — OLD Fabric chaincode (commitment/exposure/claims),
-                                  genericized but not yet retired — still the
-                                  reference for porting exposure/claims to Compact
-services/api/                 — OLD Fastify backend, still talks to Fabric gateway
-web/                           — Next.js frontend, still calls the old API, no
-                                  wallet-connect yet
-network/                       — OLD Fabric Docker Compose network, untouched
-
-============================================================================
-5. .GITIGNORE — UPDATED
-============================================================================
-
-Added a Midnight-specific section:
-  midnight/contracts/*/src/managed/     (compiled contract output — regenerable,
-                                          large binary prover/verifier keys)
-  midnight-level-db/                     (local wallet/private-state LevelDB store
-                                          created by levelPrivateStateProvider)
-  *.prover / *.verifier                  (belt-and-suspenders in case managed/
-                                          artifacts end up somewhere unexpected)
-
-Nothing else was changed. The existing rules (node_modules/, *.log, .env*, Fabric
-crypto material, etc.) already covered everything else relevant. Since NOTHING is
-committed yet in this repo, do one clean review of `git status` before your first
-commit to make sure none of the above slipped through, and that the wallet seed
-above never ends up in a committed file (it's fine here in handover.txt only if
-you're comfortable with that file itself not being committed — otherwise move the
-seed to a local .env, which IS gitignored, before committing).
+  src/commitment.compact       — the smart contract (real k-of-n board threshold)
+  src/witnesses.ts             — private witnesses (callerRole, boardSignatures, boardKeyIds)
+  src/config.ts                — network configs + configFor()/networkFromEnv()
+  src/common-types.ts          — midnight-js type wiring
+  src/api.ts                   — wallet/providers/deploy/join/circuit calls
+  src/deploy.ts                — deploy CLI; writes deployment.<network>.json
+  src/bridge.ts                — the Midnight back end (Fastify)
+  src/probe-*.ts               — THROWAWAY sync/serialization probes, safe to delete
+  tsconfig.json                — new; without it tsc checks nothing
+  README.md                    — build status, toolchain gotchas, threshold scope
+midnight/reference/            — real example-counter source, ground truth
+web/lib/midnight.ts            — bridge client
+web/app/midnight/page.tsx      — the Midnight portal (untested)
+chaincode/, services/api/, network/, redteam/  — OLD Fabric stack, still present

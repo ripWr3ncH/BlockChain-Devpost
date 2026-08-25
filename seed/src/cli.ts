@@ -23,7 +23,7 @@ const args = new Map(
 );
 
 const data = generate({
-  seed: args.get('seed') ?? 'verity-bcolbd-2026',
+  seed: args.get('seed') ?? 'verity-brainwave-2026',
   loansPerBank: Number(args.get('loans') ?? 400),
   depositorsPerBank: Number(args.get('depositors') ?? 250),
   groupCount: Number(args.get('groups') ?? 60),

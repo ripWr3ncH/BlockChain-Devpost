@@ -61,6 +61,12 @@ midnight/contracts/*/src/managed/
 midnight-level-db/
 *.prover
 *.verifier
+# Local wallet/private-state store created by levelPrivateStateProvider
+midnight/contracts/*/.midnight-level-db/
+# Cached synced wallet state — derived from the seed, treat as secret
+midnight/contracts/*/.wallet-cache.*.json
+# deployment.<network>.json holds only a public contract address and IS committed
+# deliberately — the bridge and the demo scripts read it. Never put a seed there.
 
 # --- Editor / OS -----------------------------------------------------------
 .DS_Store

@@ -13,6 +13,8 @@
 // funded seed available here). Treat as ready-to-run, not as verified-working.
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { type ContractAddress } from '@midnight-ntwrk/compact-runtime';
 import * as ledger from '@midnight-ntwrk/ledger-v8';
 import { unshieldedToken } from '@midnight-ntwrk/ledger-v8';
@@ -21,7 +23,7 @@ import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import { type FinalizedTxData, type MidnightProvider, type WalletProvider } from '@midnight-ntwrk/midnight-js/types';
-import { WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
+import { WalletFacade, type FacadeState } from '@midnight-ntwrk/wallet-sdk-facade';
 import { DustWallet } from '@midnight-ntwrk/wallet-sdk-dust-wallet';
 import { HDWallet, Roles, generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 import { ShieldedWallet } from '@midnight-ntwrk/wallet-sdk-shielded';
@@ -40,7 +42,7 @@ import {
   type CommitmentProviders,
   type DeployedCommitmentContract,
 } from './common-types.js';
-import { type Config, contractConfig } from './config.js';
+import { currentDir, type Config, contractConfig } from './config.js';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js/utils';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
@@ -60,8 +62,14 @@ import { commitmentPrivateStateId, createCommitmentWitnesses, type CommitmentPri
 // @ts-expect-error: needed to enable WebSocket usage through apollo
 globalThis.WebSocket = WebSocket;
 
+// withVacantWitnesses (what the counter example uses) installs an EMPTY witness
+// object. The counter has no witnesses so that is fine there; this contract has
+// three, and vacant witnesses fail at the first circuit call with
+//   CompactError: first (witnesses) argument to Contract constructor does not
+//   contain a function-valued field named callerRole
+// which is thrown at deploy time, after the wallet has already synced.
 const commitmentCompiledContract = CompiledContract.make('commitment', CommitmentContractClass).pipe(
-  CompiledContract.withVacantWitnesses,
+  CompiledContract.withWitnesses(createCommitmentWitnesses()),
   CompiledContract.withCompiledFileAssets(contractConfig.zkConfigPath),
 );
 
@@ -103,14 +111,29 @@ export const joinContract = async (
     initialPrivateState: privateState,
   });
 
+/** Genesis parameters for the contract's constructor. */
+export interface GenesisConfig {
+  rescheduleCapOccasions: bigint;
+  boardEscalationFromAttempt: bigint;
+  boardThresholdK: bigint;
+  councilQuorum: bigint;
+}
+
 export const deploy = async (
   providers: CommitmentProviders,
   privateState: CommitmentPrivateState,
+  genesis: GenesisConfig,
 ): Promise<DeployedCommitmentContract> =>
   deployContract(providers, {
     compiledContract: commitmentCompiledContract,
     privateStateId: commitmentPrivateStateId,
     initialPrivateState: privateState,
+    args: [
+      genesis.rescheduleCapOccasions,
+      genesis.boardEscalationFromAttempt,
+      genesis.boardThresholdK,
+      genesis.councilQuorum,
+    ],
   });
 
 // --------------------------------------------------------------------------
@@ -217,7 +240,9 @@ const signTransactionIntents = (
 };
 
 export const createWalletAndMidnightProvider = async (ctx: WalletContext): Promise<WalletProvider & MidnightProvider> => {
-  const state = await Rx.firstValueFrom(ctx.wallet.state().pipe(Rx.filter((s) => s.isSynced)));
+  // The coin/encryption public keys are derived from the secret keys, so the first
+  // emitted state already carries them - no need to block on a full sync here.
+  const state = await Rx.firstValueFrom(ctx.wallet.state());
   return {
     getCoinPublicKey() {
       return state.shielded.coinPublicKey.toHexString();
@@ -244,6 +269,22 @@ export const createWalletAndMidnightProvider = async (ctx: WalletContext): Promi
   };
 };
 
+// Deploying only spends unshielded NIGHT (and the DUST it generates) for fees, so
+// those are the only two wallets that have to be caught up. The facade's own
+// `isSynced` also ANDs in the shielded/Zswap wallet, whose first-time scan walks the
+// whole Preprod history and exhausted a 6GB heap around index 83k without ever
+// reporting a target height. Gating on the two wallets the deploy actually reads
+// lets it proceed while that scan is still running in the background.
+// isCompleteWithin measures the gap between appliedIndex and *highestRelevantWalletIndex*
+// (unshielded: appliedId vs highestTransactionId) — not the highestIndex the heartbeat
+// used to print. Strict equality against a chain that keeps advancing is racy, so this
+// keeps the SDK's own default tolerance; the real go/no-go is the DUST balance check
+// that follows, which only passes once fees are actually payable.
+const SYNC_GAP = 50n;
+
+const feeWalletsSynced = (state: FacadeState): boolean =>
+  state.unshielded.progress.isCompleteWithin(SYNC_GAP) && state.dust.progress.isCompleteWithin(SYNC_GAP);
+
 export const waitForSync = (wallet: WalletFacade) =>
   Rx.firstValueFrom(
     wallet.state().pipe(
@@ -253,12 +294,21 @@ export const waitForSync = (wallet: WalletFacade) =>
         // sync against Preprod — without this the process looks hung. progress
         // tracks index-in-chain, not a percentage, but a climbing number (or a
         // stalled one) is the difference between "working" and "actually stuck".
-        const p = state.unshielded.progress;
+        //
+        // The two wallets report progress under different field names: shielded
+        // uses appliedIndex/highestIndex, unshielded appliedId/highestTransactionId.
+        // Both are logged because either one lagging holds back isSynced.
+        const sh = state.shielded.progress;
+        const un = state.unshielded.progress;
+        const du = state.dust.progress;
         console.log(
-          `  syncing... applied=${p.appliedIndex} highest=${p.highestIndex} connected=${p.isConnected} isSynced=${state.isSynced}`,
+          `  syncing... unshielded=${un.appliedId}/${un.highestTransactionId} ` +
+            `dust=${du.appliedIndex}/${du.highestRelevantWalletIndex} ` +
+            `shielded=${sh.appliedIndex}/${sh.highestRelevantWalletIndex} (not required) ` +
+            `feeWalletsSynced=${feeWalletsSynced(state)}`,
         );
       }),
-      Rx.filter((state) => state.isSynced),
+      Rx.filter(feeWalletsSynced),
     ),
   );
 
@@ -266,17 +316,25 @@ export const waitForFunds = (wallet: WalletFacade): Promise<bigint> =>
   Rx.firstValueFrom(
     wallet.state().pipe(
       Rx.throttleTime(10_000),
-      Rx.filter((state) => state.isSynced),
+      Rx.filter(feeWalletsSynced),
       Rx.map((s) => s.unshielded.balances[unshieldedToken().raw] ?? 0n),
       Rx.filter((balance) => balance > 0n),
     ),
   );
+
+// The shielded wallet replays every ledger event from genesis on a first sync, and
+// the SDK's default batching walks Preprod at ~80 events/s — roughly five hours, and
+// it exhausted a 6GB heap long before finishing. Pulling the stream in large batches
+// took the same scan to ~14,000/s with resident memory flat around 340MB. This single
+// number is the difference between "cannot sync at all" and "synced in ~2 minutes".
+const SHIELDED_SYNC_BATCH = 5_000;
 
 const buildShieldedConfig = ({ indexer, indexerWS, node, proofServer }: Config) => ({
   networkId: getNetworkId(),
   indexerClientConnection: { indexerHttpUrl: indexer, indexerWsUrl: indexerWS },
   provingServerUrl: new URL(proofServer),
   relayURL: new URL(node.replace(/^http/, 'ws')),
+  batchSize: SHIELDED_SYNC_BATCH,
 });
 
 const buildUnshieldedConfig = ({ indexer, indexerWS }: Config) => ({
@@ -308,7 +366,7 @@ const deriveKeysFromSeed = (seed: string) => {
 const formatBalance = (balance: bigint): string => balance.toLocaleString();
 
 const registerForDustGeneration = async (wallet: WalletFacade, unshieldedKeystore: UnshieldedKeystore): Promise<void> => {
-  const state = await Rx.firstValueFrom(wallet.state().pipe(Rx.filter((s) => s.isSynced)));
+  const state = await Rx.firstValueFrom(wallet.state().pipe(Rx.filter(feeWalletsSynced)));
   if (state.dust.availableCoins.length > 0) return;
 
   const nightUtxos = state.unshielded.availableCoins.filter(
@@ -318,7 +376,7 @@ const registerForDustGeneration = async (wallet: WalletFacade, unshieldedKeystor
     await Rx.firstValueFrom(
       wallet.state().pipe(
         Rx.throttleTime(5_000),
-        Rx.filter((s) => s.isSynced),
+        Rx.filter(feeWalletsSynced),
         Rx.filter((s) => s.dust.balance(new Date()) > 0n),
       ),
     );
@@ -336,13 +394,54 @@ const registerForDustGeneration = async (wallet: WalletFacade, unshieldedKeystor
   await Rx.firstValueFrom(
     wallet.state().pipe(
       Rx.throttleTime(5_000),
-      Rx.filter((s) => s.isSynced),
+      Rx.filter(feeWalletsSynced),
       Rx.filter((s) => s.dust.balance(new Date()) > 0n),
     ),
   );
 };
 
 /** Build (or restore) a wallet from a hex seed; wait for sync and funds. */
+/**
+ * Where a synced wallet's state is cached between runs.
+ *
+ * Re-syncing from genesis costs tens of minutes (see SHIELDED_SYNC_BATCH and the
+ * DUST notes in README.md), and every restart of the bridge or a redeploy would
+ * otherwise pay it again. The cached state resumes from its own offset and catches
+ * up from there. Delete the file to force a clean re-sync.
+ *
+ * Gitignored: it is derived from the wallet seed and should be treated as secret.
+ */
+const walletCacheFile = (config: Config): string =>
+  path.resolve(currentDir, '..', `.wallet-cache.${networkOf(config)}.json`);
+
+const networkOf = (config: Config): string =>
+  config.indexer.includes('preview') ? 'preview' : config.indexer.includes('preprod') ? 'preprod' : 'standalone';
+
+interface WalletCache {
+  shielded?: string;
+  dust?: string;
+}
+
+const readWalletCache = (config: Config): WalletCache => {
+  try {
+    return JSON.parse(readFileSync(walletCacheFile(config), 'utf8')) as WalletCache;
+  } catch {
+    return {};
+  }
+};
+
+const writeWalletCache = (config: Config, state: FacadeState): void => {
+  try {
+    writeFileSync(
+      walletCacheFile(config),
+      JSON.stringify({ shielded: state.shielded.serialize(), dust: state.dust.serialize() }),
+    );
+  } catch (err) {
+    // A cache that cannot be written costs time on the next run, nothing more.
+    console.warn(`  (could not cache wallet state: ${(err as Error).message})`);
+  }
+};
+
 export const buildWalletAndWaitForFunds = async (config: Config, seed: string): Promise<WalletContext> => {
   const keys = deriveKeysFromSeed(seed);
   const shieldedSecretKeys = ledger.ZswapSecretKeys.fromSeed(keys[Roles.Zswap]);
@@ -354,18 +453,31 @@ export const buildWalletAndWaitForFunds = async (config: Config, seed: string): 
     ...buildUnshieldedConfig(config),
     ...buildDustConfig(config),
   };
+
+  const cache = readWalletCache(config);
+  if (cache.shielded && cache.dust) {
+    console.log('Resuming from cached wallet state (delete .wallet-cache.*.json to re-sync from genesis).');
+  }
+
   const wallet = await WalletFacade.init({
     configuration: walletConfig,
-    shielded: (cfg) => ShieldedWallet(cfg).startWithSecretKeys(shieldedSecretKeys),
+    shielded: (cfg) =>
+      cache.shielded
+        ? ShieldedWallet(cfg).restore(cache.shielded)
+        : ShieldedWallet(cfg).startWithSecretKeys(shieldedSecretKeys),
     unshielded: (cfg) => UnshieldedWallet(cfg).startWithPublicKey(PublicKey.fromKeyStore(unshieldedKeystore)),
-    dust: (cfg) => DustWallet(cfg).startWithSecretKey(dustSecretKey, ledger.LedgerParameters.initialParameters().dust),
+    dust: (cfg) =>
+      cache.dust
+        ? DustWallet(cfg).restore(cache.dust)
+        : DustWallet(cfg).startWithSecretKey(dustSecretKey, ledger.LedgerParameters.initialParameters().dust),
   });
   await wallet.start(shieldedSecretKeys, dustSecretKey);
 
   console.log(`Unshielded address (fund via faucet): ${unshieldedKeystore.getBech32Address()}`);
-  console.log('Preprod faucet: https://faucet.preprod.midnight.network/');
+  console.log(`Faucet: https://faucet.${networkOf(config)}.midnight.network/`);
 
   const syncedState = await waitForSync(wallet);
+  writeWalletCache(config, syncedState);
   const balance = syncedState.unshielded.balances[unshieldedToken().raw] ?? 0n;
   if (balance === 0n) {
     console.log('Waiting for incoming tokens...');

@@ -13,11 +13,30 @@
 export interface CommitmentPrivateState {
   /** 0=NONE 1=BANK_A 2=BANK_B 3=CENTRAL_AUTHORITY 4=REGULATORY_COUNCIL — matches the Role enum order in commitment.compact. */
   callerRole: number;
-  /** Up to 4 director signatures collected for the event currently being appended, keyed by event hash hex. */
-  pendingBoardSignatures: Record<string, Array<Uint8Array | undefined>>;
+  /**
+   * Director approval secrets for the transaction currently being built. Each is the
+   * preimage of the publicKeyCommitment that director registered on-ledger; it stays
+   * in the witness and is never disclosed.
+   *
+   * Deliberately NOT keyed by event hash. The circuit takes an eventHash argument, but
+   * it only uses it to ask for this bundle — an approval is a proof of knowledge of a
+   * registered commitment, not a signature over the event, so keying the store by event
+   * would imply a per-event binding that nothing actually enforces. See the board
+   * threshold notes in README.md.
+   */
+  pendingBoardSignatures: Array<Uint8Array | undefined>;
+  /**
+   * The director key ids the secrets above belong to, slot for slot. Unlike the secrets
+   * these ARE disclosed — the on-ledger `directors` registry is a public Map and the
+   * circuit needs a public key to look a director up.
+   */
+  pendingBoardKeyIds: Array<Uint8Array | undefined>;
 }
 
 export const commitmentPrivateStateId = 'commitmentPrivateState';
+
+/** Board approval slots per event — must match the Vector<4, ...> width in commitment.compact. */
+export const BOARD_SLOTS = 4;
 
 export const createCommitmentWitnesses = () => ({
   callerRole(context: { privateState: CommitmentPrivateState }): [CommitmentPrivateState, number] {
@@ -26,14 +45,27 @@ export const createCommitmentWitnesses = () => ({
 
   boardSignatures(
     context: { privateState: CommitmentPrivateState },
-    eventHash: Uint8Array,
+    _eventHash: Uint8Array,
   ): [CommitmentPrivateState, Array<{ is_some: boolean; value: Uint8Array }>] {
-    const key = Buffer.from(eventHash).toString('hex');
-    const sigs = context.privateState.pendingBoardSignatures[key] ?? [];
+    const sigs = context.privateState.pendingBoardSignatures;
     const padded: Array<{ is_some: boolean; value: Uint8Array }> = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < BOARD_SLOTS; i++) {
       const sig = sigs[i];
       padded.push({ is_some: sig !== undefined, value: sig ?? new Uint8Array(32) });
+    }
+    return [context.privateState, padded];
+  },
+
+  boardKeyIds(
+    context: { privateState: CommitmentPrivateState },
+    _eventHash: Uint8Array,
+  ): [CommitmentPrivateState, Uint8Array[]] {
+    const ids = context.privateState.pendingBoardKeyIds;
+    const padded: Uint8Array[] = [];
+    for (let i = 0; i < BOARD_SLOTS; i++) {
+      // An empty slot gets all-zeroes, which will not match any registered
+      // director, so the circuit scores it as not counting toward the threshold.
+      padded.push(ids[i] ?? new Uint8Array(32));
     }
     return [context.privateState, padded];
   },
