@@ -1,0 +1,116 @@
+# ==========================================================================
+#  VERITY — cryptogen input
+#
+#  Generates X.509 material for the five ordering organisations and the four
+#  peer organisations (§4.1, §4.2).
+#
+#  NOTE ON CAs: orderers use cryptogen. Peer organisations ALSO get a Fabric CA
+#  container (see compose/compose-ca.yaml), because §4.4 requires role
+#  attributes on officer certificates and CRL-based revocation, neither of which
+#  cryptogen can do. cryptogen material bootstraps the peers; the CA issues the
+#  human identities on top of the same root. See scripts/enrollUsers.sh.
+#
+#  Run:  cryptogen generate --config=./crypto-config.yaml --output=./organizations
+# ==========================================================================
+
+OrdererOrgs:
+
+  # ---- Central Authority, ordering arm --------------------------------------
+  - Name: OrdererBB
+    Domain: ord-bb.verity.local
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer0
+        SANS:
+          - localhost
+          - 127.0.0.1
+
+  # ---- Regulatory Council — institutional neutrality (§4.1) ------------------------------
+  - Name: OrdererCouncil
+    Domain: ord-bibm.verity.local
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer1
+        SANS:
+          - localhost
+          - 127.0.0.1
+
+  # ---- Financial Reporting Council, ordering arm ---------------------------
+  - Name: OrdererFRC
+    Domain: ord-frc.verity.local
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer2
+        SANS:
+          - localhost
+          - 127.0.0.1
+
+  # ---- Rotating bank seat A (§4.1) -----------------------------------------
+  - Name: OrdererSeatA
+    Domain: ord-seata.verity.local
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer3
+        SANS:
+          - localhost
+          - 127.0.0.1
+
+  # ---- Rotating bank seat B (§4.1) -----------------------------------------
+  - Name: OrdererSeatB
+    Domain: ord-seatb.verity.local
+    EnableNodeOUs: true
+    Specs:
+      - Hostname: orderer4
+        SANS:
+          - localhost
+          - 127.0.0.1
+
+PeerOrgs:
+
+  # ---- Bank A Islami Bank PLC — resolution entity, Phase 1 --------------
+  - Name: BankA
+    Domain: banka.verity.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+        - 127.0.0.1
+    Users:
+      Count: 6      # officers, directors and the adapter service identity
+
+  # ---- Bank B Bank — synthetic second institution --------------------------
+  - Name: BankB
+    Domain: bankb.verity.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+        - 127.0.0.1
+    Users:
+      Count: 4
+
+  # ---- Central Authority — the supervisor -------------------------------------
+  - Name: CentralAuthority
+    Domain: bb.verity.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+        - 127.0.0.1
+    Users:
+      Count: 3
+
+  # ---- Financial Reporting Council — query peer only ------------------------
+  - Name: Regulatory Council
+    Domain: frc.verity.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+        - 127.0.0.1
+    Users:
+      Count: 2

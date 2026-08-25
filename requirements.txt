@@ -1,0 +1,93 @@
+Brainwave 2026 - Midnight Track (International) — Competition Requirements
+Source: https://brainwave-2026-midnight-track.devpost.com/
+Extracted: 2026-08-25
+
+OVERVIEW
+--------
+International blockchain hackathon inviting developers, innovators, students,
+researchers, designers, and technology enthusiasts to build decentralized
+solutions using the Midnight ecosystem.
+
+Theme: "From Midnight Ideas to On-Chain Innovation" — build practical solutions
+addressing real-world problems using decentralized systems, smart contracts,
+privacy, digital assets, Web3 infrastructure, and emerging blockchain tech.
+
+Sponsor: Midnight
+Organizer: ACTS EDC
+Format: Online, public event
+
+ELIGIBILITY
+-----------
+- Participant must be above the legal age of majority in their country of residence.
+- Students only — companies and professional organizations are excluded.
+- Open to all countries/territories except standard Devpost exclusions.
+
+CORE SUBMISSION REQUIREMENTS
+-----------------------------
+1. Build a full-stack application on the Midnight ecosystem (front-end + back-end,
+   not just a smart contract).
+2. Use Midnight technology meaningfully within the project (not a superficial
+   integration) — "Projects that do not demonstrate a functional Midnight
+   integration may not qualify."
+3. Deploy the project's smart contract(s) on Midnight Preview or PreProd network
+   (this is the key change vs. the BD-specific version — must actually be a
+   Midnight-based chain, not a generic/other blockchain).
+4. Provide a working application demonstration (demo video / live demo).
+5. Provide clear documentation and setup instructions (README, run steps).
+6. Complete all work within the hackathon timeline (no pre-existing projects).
+
+JUDGING CRITERIA (weights)
+---------------------------
+- Innovation & Creativity        25%
+- Technical Implementation       25%
+- Impact & Problem Solving       20%
+- User Experience & Design       15%
+- Scalability & Feasibility      10%
+- Presentation & Demo             5%
+
+PRIZES
+------
+Total prize pool: $220
+- Winner: $100 cash + digital goodies/swag worth $200+
+- 1st Runner-up: $70 cash + digital goodies/swag worth $150+
+- 2nd Runner-up: $50 cash + digital goodies/swag worth $100+
+
+KEY DATES
+---------
+- Hackathon window: Aug 26, 9:30pm EDT — Aug 27, 7:00am IST
+  (NOTE: verify this — window looks unusually short/tight; re-check the Devpost
+  "Timeline" tab directly before finalizing plans since page text may be summarized.)
+- ~161 participants registered at time of extraction.
+
+TECHNOLOGY REQUIREMENTS
+------------------------
+- Must integrate the Midnight blockchain ecosystem (not the previous BD-comp
+  chain/stack).
+- Smart contracts must be deployed to Midnight Preview or PreProd testnet.
+- Midnight docs: https://docs.midnight.network/
+
+ACTION ITEMS TO ADAPT THE EXISTING PROJECT
+--------------------------------------------
+1. Replace/port existing smart contracts to Midnight's Compact smart contract
+   language and deploy to Midnight Preview/PreProd (check current chain used
+   in the BD version and plan a migration path).
+2. Review Midnight's privacy-preserving / ZK features (Midnight is a
+   privacy-focused ZK blockchain) — see if the project's use case benefits from
+   confidential state, since this is a differentiator vs. typical EVM chains.
+3. Update docs/README for an international audience (remove BD-specific
+   references, regulatory assumptions, currency, language).
+4. Prepare a demo video and clear setup instructions per submission requirements.
+5. Confirm exact hackathon dates/deadline on the Devpost "Timeline" tab and
+   register the team before the deadline.
+
+CONTACTS
+--------
+- Hackathon Manager: aditya.12319051724@std.ggsipu.ac.in
+- Judge: MD Salik
+
+CAVEAT
+------
+This file was extracted via automated page fetch/summarization of the Devpost
+page. Numbers (prize amounts, exact dates/times, participant count) should be
+manually verified on https://brainwave-2026-midnight-track.devpost.com/ before
+relying on them for planning, as summarization can drop or garble details.
