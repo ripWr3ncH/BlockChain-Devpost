@@ -13,7 +13,7 @@ authorised a write-off is proved in **zero knowledge** — the directors' creden
 
 <br>
 
-<a href="https://youtu.be/dh57TB278Oc">
+<a href="https://youtu.be/CMZEeINqj_Y">
   <img src="docs/video-thumbnail.png" alt="Watch the 3-minute demo on YouTube" width="860">
 </a>
 
@@ -36,7 +36,7 @@ authorised a write-off is proved in **zero knowledge** — the directors' creden
   <sub>8 slides. The pitch in the<br>order it is told in the video.</sub>
 </td>
 <td align="center" width="33%">
-  <a href="https://youtu.be/dh57TB278Oc"><b>DEMO&nbsp;VIDEO</b></a>
+  <a href="https://youtu.be/CMZEeINqj_Y"><b>DEMO&nbsp;VIDEO</b></a>
   <br><br>
   <sub>3 minutes. Watch the contract<br>refuse a write-off, then accept it.</sub>
 </td>
@@ -181,7 +181,7 @@ commits — and that grade was never published either.
 
 <div align="center">
 
-<a href="https://youtu.be/dh57TB278Oc">
+<a href="https://youtu.be/CMZEeINqj_Y">
   <img src="docs/video-thumbnail.png" alt="Watch the 3-minute demo on YouTube" width="600">
 </a>
 
@@ -492,7 +492,7 @@ MIT — see [LICENSE](LICENSE).
   <b>PITCH&nbsp;DECK</b></a>
 </td>
 <td align="center" width="33%">
-  <a href="https://youtu.be/dh57TB278Oc"><b>DEMO&nbsp;VIDEO</b></a>
+  <a href="https://youtu.be/CMZEeINqj_Y"><b>DEMO&nbsp;VIDEO</b></a>
 </td>
 </tr>
 </table>
