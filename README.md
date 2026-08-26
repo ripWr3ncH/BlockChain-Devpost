@@ -244,6 +244,16 @@ Full stack: a Next.js front end, a long-lived bridge service holding the wallet 
 contract on Midnight Preview.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{
+  'primaryColor':'#FFFCF6',
+  'primaryTextColor':'#1A0044',
+  'primaryBorderColor':'#1A0044',
+  'lineColor':'#9859FF',
+  'textColor':'#1A0044',
+  'clusterBkg':'#F6F1FD',
+  'clusterBorder':'#9859FF',
+  'edgeLabelBackground':'#FFFFFF'
+}}}%%
 flowchart LR
     subgraph WEB["Front end · Next.js"]
         UI["Board room<br/><i>/board</i>"]
@@ -266,8 +276,11 @@ flowchart LR
     CC --> L
     L -->|indexer| W
 
-    style CC fill:#e2fbec,stroke:#0a7a43
-    style L fill:#111111,color:#ffffff
+    style UI fill:#FFFCF6,stroke:#1A0044,stroke-width:2px,color:#1A0044
+    style W  fill:#FFFCF6,stroke:#1A0044,stroke-width:2px,color:#1A0044
+    style PS fill:#FE4CB9,stroke:#1A0044,stroke-width:2px,color:#FFFFFF
+    style CC fill:#9859FF,stroke:#1A0044,stroke-width:2px,color:#FFFFFF
+    style L  fill:#1A0044,stroke:#1A0044,stroke-width:2px,color:#FFFFFF
 ```
 
 The bridge is a **separate long-lived process**, and that is a structural decision rather than a stylistic
