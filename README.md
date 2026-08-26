@@ -10,11 +10,13 @@ credentials never reach the chain.
 *Brainwave 2026 · Midnight Track · Team Logarithm*
 
 > **Live on Midnight Preview.**
-> Contract address: `6fcd40645315980824c02a865e9601b206a3d0702ecf4ea8044a9fd950d67a2b`
+> Contract address: `08b5b8b1bb403524b1066615752512019714a64859f77bea868f8615fe0f51da`
 >
-> Verified end to end: the same write-off transaction was **refused** with zero director
-> approvals and **committed at block 580673** with two — and the approving credentials
-> never appeared on the ledger. Reproduce it with `node scripts/midnight-smoke.mjs`.
+> Verified end to end, twice over. The same **write-off** was refused with zero director
+> approvals and committed with two. The same **restructure** was refused when submitted at
+> the grade that sanctioned the loan and committed one grade above it. Neither the director
+> secrets nor the officer's grade ever reached the ledger.
+> Reproduce both with `node scripts/midnight-smoke.mjs`.
 
 ---
 
@@ -75,6 +77,20 @@ assert(disclose(validCount) >= config.boardThresholdK,
 ```
 
 A verifier learns *"enough directors approved."* Nothing else crosses the boundary.
+
+### The second rule: rank, also proved privately
+
+Not every event needs the board. A restructure needs *rank* — it must be authorised at least
+one grade above the officer who sanctioned the loan, so nobody clears their own decision.
+
+That comparison happens inside the circuit over a **private** seniority grade
+(`witness callerSeniority`), and only the boolean result is disclosed. The reason is the same
+shape as the board rule: an officer's grade is personnel data, and publishing it on every
+reclassification would leak the bank's internal hierarchy to anyone reading the chain. The
+ledger records that the rule held, not who held it.
+
+The loan's *sanctioning* grade is public, because it is the bar a later event must clear and
+a bar nobody can read is not a bar.
 
 ### What this does and does not prove
 
@@ -221,11 +237,22 @@ Actual output against the live contract:
    refused        board authorisation required: insufficient confirmed director signatures
 
 5. Resubmit with 2 approvals (must commit)
-   committed      00ccba624d4324ccc248423315fe101df617c5d951d41b1f07c4da710df8531623
-   block          580673
+   committed      001f5b2ea0ec4ed2e7bd90c6addbe0384e797ba127356e9b3154b50bf9779d690b
+   block          586223
 
-PASSED — the same submission was refused without board approval and
-committed with it, and the approving credentials never reached the ledger.
+6. RESTRUCTURE at the sanctioning grade (must be refused)
+   loan sanctioned at grade 2
+   refused        authority required: this event must be authorised at least one grade
+                  above the sanctioning officer
+
+7. Resubmit one grade above (must commit)
+   committed      002299262b44783ed8d04097807148e67175d5e6cc7a1fe19135493cc26660d283
+   block          586236
+
+PASSED
+  · the same write-off was refused without board approval, committed with it
+  · the same restructure was refused at the sanctioning grade, committed above it
+  · neither the director secrets nor the officer's grade reached the ledger
 ```
 
 ---
@@ -291,7 +318,6 @@ with an error about a missing verifier key that was sitting right there on disk.
 - Bridge service and Midnight portal, exercised end to end by the smoke test
 
 **Honest gaps**
-- The `ONE_LEVEL_ABOVE` seniority check is still a placeholder (`assert(true, …)`).
 - Board approvals are replayable across events (see above).
 - The bridge asserts its own `callerRole` per endpoint. That is fine for a prototype where
   one operator drives every party, but it is **not a security boundary** — production would

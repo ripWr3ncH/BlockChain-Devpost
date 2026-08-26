@@ -14,6 +14,12 @@ export interface CommitmentPrivateState {
   /** 0=NONE 1=BANK_A 2=BANK_B 3=CENTRAL_AUTHORITY 4=REGULATORY_COUNCIL — matches the Role enum order in commitment.compact. */
   callerRole: number;
   /**
+   * The acting officer's seniority grade; higher is more senior. Held privately and
+   * never disclosed — the circuit discloses only whether it cleared the loan's
+   * sanctioning grade, so the bank's internal hierarchy stays off the ledger.
+   */
+  callerSeniority: number;
+  /**
    * Director approval secrets for the transaction currently being built. Each is the
    * preimage of the publicKeyCommitment that director registered on-ledger; it stays
    * in the witness and is never disclosed.
@@ -41,6 +47,10 @@ export const BOARD_SLOTS = 4;
 export const createCommitmentWitnesses = () => ({
   callerRole(context: { privateState: CommitmentPrivateState }): [CommitmentPrivateState, number] {
     return [context.privateState, context.privateState.callerRole];
+  },
+
+  callerSeniority(context: { privateState: CommitmentPrivateState }): [CommitmentPrivateState, bigint] {
+    return [context.privateState, BigInt(context.privateState.callerSeniority)];
   },
 
   boardSignatures(

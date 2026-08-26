@@ -135,6 +135,12 @@ witness boardSignatures(eventHash: Bytes<32>): Vector<4, Maybe<Bytes<32>>>;
 // a public key, so the circuit cannot check a slot without naming the director.
 witness boardKeyIds(eventHash: Bytes<32>): Vector<4, Bytes<32>>;
 
+// The acting officer's seniority grade, held privately by the caller's credential.
+// Never disclosed: only the RESULT of comparing it to the loan's sanctioning grade
+// reaches the ledger, so a supervisor learns "this was signed off a level above the
+// officer who sanctioned it" without learning who signed or how senior they are.
+witness callerSeniority(): Uint<8>;
+
 // --------------------------------------------------------------------------
 //  Origination
 // --------------------------------------------------------------------------
@@ -156,12 +162,16 @@ export circuit originateLoan(
     [id, genesisHash, disclose(payloadHash)]
   );
 
+  // The grade of the officer who sanctioned this loan is recorded on the record so
+  // later revisions can be checked against it. This one IS public: it is the bar a
+  // future event has to clear, and a bar nobody can read is not a bar. What stays
+  // private is the grade of whoever comes along later to clear it.
   loans.insert(id, LoanRecord {
     institution: role,
     currentTier: tier,
     prevStateHash: evHash,
     rsSequence: 0,
-    sanctioningSeniority: 0, // TODO: carry real seniority from the caller's credential
+    sanctioningSeniority: disclose(callerSeniority()),
     eventCount: 1,
     active: true
   });
@@ -201,9 +211,7 @@ export circuit appendEvent(
   if (required == AuthorityKind.BOARD_THRESHOLD) {
     verifyBoardThreshold(evHash, loan.institution);
   } else if (required == AuthorityKind.ONE_LEVEL_ABOVE) {
-    // TODO: compare caller seniority (from a seniority witness/credential) to
-    // loan.sanctioningSeniority once the seniority credential is wired up.
-    assert(true, "one-level-above check placeholder — see TODO");
+    verifySeniorityAbove(loan.sanctioningSeniority);
   }
   // MDCEO and MECHANICAL: no additional evidence required beyond role/arithmetic.
 
@@ -302,6 +310,26 @@ circuit verifyBoardThreshold(eventHash: Bytes<32>, inst: Role): [] {
 
   const validCount = ((g0 ? 1 : 0) + (g1 ? 1 : 0) + (g2 ? 1 : 0) + (g3 ? 1 : 0)) as Uint<8>;
   assert(disclose(validCount) >= config.boardThresholdK, "board authorisation required: insufficient confirmed director signatures");
+}
+
+// An officer may not clear their own decision. The rule the paper states is that a
+// revision must be authorised at least one grade above whoever sanctioned the loan;
+// this proves exactly that and nothing else.
+//
+// The comparison happens inside the circuit over a PRIVATE seniority grade, and only
+// the boolean result is disclosed. That matters: an officer's grade is personnel data,
+// and publishing it on every reclassification would leak the bank's internal hierarchy
+// to anyone reading the chain. The ledger records that the rule held, not who held it.
+//
+// Grades are ordered so that a HIGHER number is more senior. sanctioningSeniority is
+// carried on the loan from origination.
+circuit verifySeniorityAbove(sanctioningSeniority: Uint<8>): [] {
+  const actingGrade = callerSeniority();
+  const isAbove = actingGrade > sanctioningSeniority;
+  assert(
+    disclose(isAbove),
+    "authority required: this event must be authorised at least one grade above the sanctioning officer"
+  );
 }
 
 // --------------------------------------------------------------------------

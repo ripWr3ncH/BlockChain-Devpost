@@ -55,6 +55,13 @@ class BadRequest extends Error {}
 const randomBytes32 = (): Uint8Array => Uint8Array.from(randomBytes(32));
 
 /**
+ * Default officer grade. Loans are sanctioned at this grade, so a revision needs a
+ * strictly higher one — which is what makes the ONE_LEVEL_ABOVE rule demonstrable
+ * rather than vacuous.
+ */
+const DEFAULT_SENIORITY = 2;
+
+/**
  * The commitment a director registers, derived exactly as the circuit derives it:
  * `persistentHash<Vector<1, Bytes<32>>>([secret])` in commitment.compact.
  */
@@ -100,6 +107,7 @@ async function main() {
 
   const privateState: CommitmentPrivateState = {
     callerRole: ROLES.CENTRAL_AUTHORITY!,
+    callerSeniority: DEFAULT_SENIORITY,
     pendingBoardSignatures: [],
     pendingBoardKeyIds: [],
   };
@@ -121,8 +129,13 @@ async function main() {
    * the caller's own key rather than letting the bridge assume any role it likes.
    * That gap is the direct equivalent of the seniority placeholder in the contract.
    */
-  const asRole = async <T>(role: keyof typeof ROLES, fn: () => Promise<T>): Promise<T> => {
+  const asRole = async <T>(
+    role: keyof typeof ROLES,
+    fn: () => Promise<T>,
+    seniority: number = DEFAULT_SENIORITY,
+  ): Promise<T> => {
     privateState.callerRole = ROLES[role]!;
+    privateState.callerSeniority = seniority;
     await providers.privateStateProvider.set(commitmentPrivateStateId, privateState);
     return fn();
   };
@@ -189,21 +202,24 @@ async function main() {
     };
   });
 
-  app.post<{ Body: { commitmentId: string; initialTier: number; payloadHash: string } }>(
-    '/loans',
-    async (request, reply) => {
+  app.post<{
+    Body: { commitmentId: string; initialTier: number; payloadHash: string; sanctioningSeniority?: number };
+  }>('/loans', async (request, reply) => {
       const b = request.body;
-      const out = await asRole('BANK_A', () =>
-        originateLoan(
-          contract,
-          hexToBytes(b.commitmentId, 'commitmentId'),
-          Number(b.initialTier),
-          hexToBytes(b.payloadHash, 'payloadHash'),
-        ),
+      // The grade recorded here becomes the bar any later revision must clear.
+      const out = await asRole(
+        'BANK_A',
+        () =>
+          originateLoan(
+            contract,
+            hexToBytes(b.commitmentId, 'commitmentId'),
+            Number(b.initialTier),
+            hexToBytes(b.payloadHash, 'payloadHash'),
+          ),
+        b.sanctioningSeniority ?? DEFAULT_SENIORITY,
       );
       return reply.code(201).send({ receipt: receipt(out) });
-    },
-  );
+  });
 
   app.post<{
     Body: {
@@ -214,6 +230,8 @@ async function main() {
       payloadHash: string;
       /** Director approvals for this event: { keyId, secret } pairs, both 32-byte hex. */
       boardApprovals?: Array<{ keyId: string; secret: string }>;
+      /** Grade of the officer acting now. Private; only the comparison is disclosed. */
+      actingSeniority?: number;
     };
   }>('/events', async (request, reply) => {
     const b = request.body;
@@ -228,8 +246,11 @@ async function main() {
     privateState.pendingBoardKeyIds = (b.boardApprovals ?? []).map((a) => hexToBytes(a.keyId, 'keyId'));
     await providers.privateStateProvider.set(commitmentPrivateStateId, privateState);
 
-    const out = await asRole('BANK_A', () =>
-      appendEvent(contract, commitmentId, Number(b.eventType), Number(b.tierAfter), prevStateHash, payloadHash),
+    const out = await asRole(
+      'BANK_A',
+      () =>
+        appendEvent(contract, commitmentId, Number(b.eventType), Number(b.tierAfter), prevStateHash, payloadHash),
+      b.actingSeniority ?? DEFAULT_SENIORITY,
     );
     return reply.code(201).send({ receipt: receipt(out) });
   });

@@ -130,8 +130,13 @@ export const midnight = {
     return res.json() as Promise<LoanRecord>;
   },
 
-  originateLoan: (commitmentId: string, initialTier: number, payloadHash: string) =>
-    call('/loans', { commitmentId, initialTier, payloadHash }),
+  /** `sanctioningSeniority` becomes the grade any later revision must exceed. */
+  originateLoan: (
+    commitmentId: string,
+    initialTier: number,
+    payloadHash: string,
+    sanctioningSeniority?: number,
+  ) => call('/loans', { commitmentId, initialTier, payloadHash, sanctioningSeniority }),
 
   appendEvent: (input: {
     commitmentId: string;
@@ -140,6 +145,8 @@ export const midnight = {
     prevStateHash: string;
     payloadHash: string;
     boardApprovals?: Array<{ keyId: string; secret: string }>;
+    /** Grade of the officer acting now. Private — only the comparison is disclosed. */
+    actingSeniority?: number;
   }) => call('/events', input),
 
   /**

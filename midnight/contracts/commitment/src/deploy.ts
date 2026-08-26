@@ -31,6 +31,7 @@ async function main() {
 
   const initialPrivateState: CommitmentPrivateState = {
     callerRole: 3, // CENTRAL_AUTHORITY deploys and holds the genesis role for governance bootstrap
+    callerSeniority: 5,
     pendingBoardSignatures: [],
     pendingBoardKeyIds: [],
   };

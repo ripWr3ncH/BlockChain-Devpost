@@ -1,9 +1,12 @@
 # Commitment contract — build status
 
 **Deployed and verified on Midnight Preview.**
-Contract: `6fcd40645315980824c02a865e9601b206a3d0702ecf4ea8044a9fd950d67a2b`
-The board threshold was confirmed live: the same write-off was refused with 0 approvals and
-committed at block 580673 with 2. Reproduce with `node scripts/midnight-smoke.mjs`.
+Contract: `08b5b8b1bb403524b1066615752512019714a64859f77bea868f8615fe0f51da`
+Both authority rules confirmed live: the same write-off was refused with 0 director
+approvals and committed with 2 (block 586223), and the same restructure was refused at the
+sanctioning grade and committed one grade above it (block 586236). Neither the director
+secrets nor the officer's grade reached the ledger.
+Reproduce with `node scripts/midnight-smoke.mjs`.
 
 `src/commitment.compact` compiles cleanly against `compact 0.31.1` (language version 0.23),
 verified by rebuilding the toolchain from scratch under WSL Ubuntu:
@@ -145,8 +148,6 @@ anonymity.
 
 ## Known gaps before this is submission-ready
 
-- `sanctioningSeniority`/ONE_LEVEL_ABOVE authority check is still a placeholder
-  (`assert(true, ...)` in `appendEvent`) — needs a real seniority credential/witness.
 - Board approvals are replayable across events (see above).
 - `exposure` and `claims` contracts (the other two Fabric channels) are not yet ported.
 - `services/api` still talks to the Fabric gateway; nothing imports `api.ts` yet.

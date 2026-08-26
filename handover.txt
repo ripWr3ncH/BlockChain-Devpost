@@ -108,7 +108,7 @@ F) Frontend (web/app/board/page.tsx + web/lib/midnight.ts) — rebuilt in the
 
 A) [DONE] THE DEPLOY — COMPLETE AND VERIFIED END TO END.
    Contract on Midnight Preview:
-     6fcd40645315980824c02a865e9601b206a3d0702ecf4ea8044a9fd950d67a2b
+     08b5b8b1bb403524b1066615752512019714a64859f77bea868f8615fe0f51da
    `node scripts/midnight-smoke.mjs` passes: the same WRITE_OFF was refused with 0
    director approvals and committed at block 580673 with 2, and the approving
    secrets never reached the ledger. Wallet funded with 5000 tNight, tx

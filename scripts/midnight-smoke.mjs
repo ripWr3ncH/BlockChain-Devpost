@@ -10,10 +10,12 @@
  *   3. originate a loan
  *   4. attempt a WRITE_OFF with too few approvals  -> the circuit MUST refuse
  *   5. resubmit with enough approvals              -> it MUST commit
+ *   6. attempt a RESTRUCTURE at the sanctioning grade -> MUST refuse
+ *   7. resubmit one grade above                       -> MUST commit
  *
- * Step 4 is the point. A run where the write-off succeeds with zero approvals is a
- * FAILURE even though nothing threw: it means the board threshold is not being
- * enforced. This script treats that as an error rather than reporting success.
+ * Steps 4 and 6 are the point. A run where either succeeds is a FAILURE even though
+ * nothing threw: it would mean an authority rule is not being enforced. This script
+ * treats that as an error rather than reporting success.
  *
  * Usage:  node scripts/midnight-smoke.mjs [bridgeUrl]
  */
@@ -142,9 +144,61 @@ async function main() {
     console.log(`   block          ${authorised.payload.receipt.blockHeight}`);
   }
 
+  // ── 6 ── seniority: an officer may not clear their own grade ───────────
+  const SANCTIONED_AT = 2;
+  step(6, `RESTRUCTURE at the sanctioning grade ${C.dim}(must be refused)${C.off}`);
+
+  const freshId = randomHex32();
+  const freshLoan = await call('POST', '/loans', {
+    commitmentId: freshId,
+    initialTier: TIERS.indexOf('STANDARD'),
+    payloadHash: randomHex32(),
+    sanctioningSeniority: SANCTIONED_AT,
+  });
+  if (!freshLoan.ok) fail('originating the seniority-test loan', freshLoan.payload);
+  const fresh = await call('GET', `/loans/${freshId}`);
+  if (!fresh.ok) fail('reading the seniority-test loan back', fresh.payload);
+  console.log(`   loan sanctioned at grade ${SANCTIONED_AT}`);
+
+  const sameGrade = await call('POST', '/events', {
+    commitmentId: freshId,
+    eventType: EVENT_TYPES.indexOf('RESTRUCTURE'),
+    tierAfter: TIERS.indexOf('SMA'),
+    prevStateHash: fresh.payload.prevStateHash,
+    payloadHash: randomHex32(),
+    actingSeniority: SANCTIONED_AT,
+  });
+  if (sameGrade.ok) {
+    fail(
+      `the restructure COMMITTED at grade ${SANCTIONED_AT} — the same grade that sanctioned\n` +
+        'the loan, so an officer just cleared their own decision. The ONE_LEVEL_ABOVE rule\n' +
+        'is not being enforced. Check verifySeniorityAbove in commitment.compact.',
+      sameGrade.payload,
+    );
+  }
+  console.log(`   ${C.ok}refused${C.off}        ${sameGrade.payload.message}`);
+
+  // ── 7 ──────────────────────────────────────────────────────────────────
+  step(7, `Resubmit one grade above ${C.dim}(must commit)${C.off}`);
+  const above = await call('POST', '/events', {
+    commitmentId: freshId,
+    eventType: EVENT_TYPES.indexOf('RESTRUCTURE'),
+    tierAfter: TIERS.indexOf('SMA'),
+    prevStateHash: fresh.payload.prevStateHash,
+    payloadHash: randomHex32(),
+    actingSeniority: SANCTIONED_AT + 1,
+  });
+  if (!above.ok) fail('the senior-enough restructure was refused', above.payload);
+  console.log(`   ${C.ok}committed${C.off}      ${above.payload.receipt.txId}`);
+  if (above.payload.receipt.blockHeight) {
+    console.log(`   block          ${above.payload.receipt.blockHeight}`);
+  }
+
   console.log(
-    `\n${C.ok}${C.bold}PASSED${C.off} — the same submission was refused without board approval and\n` +
-      `committed with it, and the approving credentials never reached the ledger.\n`,
+    `\n${C.ok}${C.bold}PASSED${C.off}\n` +
+      `  · the same write-off was refused without board approval, committed with it\n` +
+      `  · the same restructure was refused at the sanctioning grade, committed above it\n` +
+      `  · neither the director secrets nor the officer's grade reached the ledger\n`,
   );
 }
 

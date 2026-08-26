@@ -35,6 +35,12 @@ interface Director {
 
 type LogEntry = { label: string; outcome: CircuitOutcome };
 
+/**
+ * The grade the demo loan is sanctioned at. A revision has to beat it, so the
+ * default acting grade starts equal — refusing — and the user raises it.
+ */
+const SANCTIONED_AT = 2;
+
 export default function BoardRoom(): React.ReactNode {
   const [state, setState] = useState<ContractState>();
   const [bridgeError, setBridgeError] = useState<string>();
@@ -46,6 +52,7 @@ export default function BoardRoom(): React.ReactNode {
   const [directors, setDirectors] = useState<Director[]>([]);
   const [approvals, setApprovals] = useState(0);
   const [wroteOff, setWroteOff] = useState(false);
+  const [actingGrade, setActingGrade] = useState(SANCTIONED_AT);
 
   const refresh = useCallback(async () => {
     try {
@@ -92,7 +99,14 @@ export default function BoardRoom(): React.ReactNode {
       // about a hash function. It returns the secret because approving later
       // means proving knowledge of it.
       const d = await midnight.provisionDirector('BANK_A');
-      setDirectors((prev) => [...prev, { keyId: d.keyId, secret: d.secret }]);
+      setDirectors((prev) => {
+        const next = [...prev, { keyId: d.keyId, secret: d.secret }];
+        // Track the board up to the threshold, so the control starts where a user
+        // would expect it. Past the threshold it stays put, because choosing to
+        // supply FEWER approvals than you hold is the whole demonstration.
+        setApprovals((a) => (a >= threshold ? a : Math.min(next.length, threshold)));
+        return next;
+      });
       record(`registerDirector + confirmDirector`, { refused: false, receipt: d.receipts.confirmed });
     } catch (e) {
       record('provision director', { refused: true, message: (e as Error).message });
@@ -104,11 +118,12 @@ export default function BoardRoom(): React.ReactNode {
   const originate = async () => {
     const id = randomHex32();
     const outcome = await run('originate', 'originateLoan', () =>
-      midnight.originateLoan(id, TIERS.indexOf('STANDARD'), randomHex32()),
+      midnight.originateLoan(id, TIERS.indexOf('STANDARD'), randomHex32(), SANCTIONED_AT),
     );
     if (isCircuitRefusal(outcome)) return;
     setCommitmentId(id);
     setWroteOff(false);
+    setActingGrade(SANCTIONED_AT);
     // Read back the hash the contract stored. appendEvent asserts against it, so
     // a guessed value fails as state divergence before any authority check runs.
     const loan = await midnight.loan(id).catch(() => undefined);
@@ -129,6 +144,21 @@ export default function BoardRoom(): React.ReactNode {
     if (!isCircuitRefusal(outcome)) setWroteOff(true);
     // A committed event advances the chain; a refused one leaves the hash valid.
     // Re-reading covers both and keeps a retry from failing as state divergence.
+    const loan = await midnight.loan(commitmentId).catch(() => undefined);
+    if (loan) setPrevStateHash(loan.prevStateHash);
+  };
+
+  const restructure = async () => {
+    await run('restructure', `appendEvent · RESTRUCTURE · grade ${actingGrade}`, () =>
+      midnight.appendEvent({
+        commitmentId,
+        eventType: EVENT_TYPES.indexOf('RESTRUCTURE'),
+        tierAfter: TIERS.indexOf('SMA'),
+        prevStateHash,
+        payloadHash: randomHex32(),
+        actingSeniority: actingGrade,
+      }),
+    );
     const loan = await midnight.loan(commitmentId).catch(() => undefined);
     if (loan) setPrevStateHash(loan.prevStateHash);
   };
@@ -288,6 +318,66 @@ export default function BoardRoom(): React.ReactNode {
             {busy === 'writeoff' ? 'Proving…' : 'Submit write-off'}
           </button>
           {!commitmentId && <span className="hint" style={{ margin: 0 }}>Originate a loan first.</span>}
+        </div>
+      </div>
+
+      {/* ── 4 · seniority ─────────────────────────────────────────────── */}
+      <div className="card" style={{ marginBottom: '1.25rem' }}>
+        <div className="step">
+          <span className="n">4</span>
+          <h3 style={{ margin: 0 }}>Or restructure it</h3>
+        </div>
+        <p className="hint" style={{ marginBottom: '1rem' }}>
+          A restructure does not need the board, but it does need rank: it must be authorised
+          at least one grade above the officer who sanctioned the loan (grade {SANCTIONED_AT}).
+          The acting grade is a <strong>private witness</strong> — the ledger records that the
+          rule held, never the officer&rsquo;s actual grade, because a bank&rsquo;s internal
+          hierarchy is nobody else&rsquo;s business.
+        </p>
+        <div className="row" style={{ gap: '1.5rem', alignItems: 'flex-end' }}>
+          <div>
+            <label htmlFor="grade">Acting officer grade</label>
+            <div className="stepper">
+              <button
+                type="button"
+                aria-label="lower grade"
+                disabled={actingGrade <= 0}
+                onClick={() => setActingGrade((g) => Math.max(0, g - 1))}
+              >
+                −
+              </button>
+              <span className="value" id="grade">
+                {actingGrade}
+              </span>
+              <button
+                type="button"
+                aria-label="higher grade"
+                disabled={actingGrade >= 9}
+                onClick={() => setActingGrade((g) => Math.min(9, g + 1))}
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div style={{ flex: '1 1 200px', minWidth: '190px' }}>
+            <label>Sanctioned at grade {SANCTIONED_AT}</label>
+            <div className={`meter${actingGrade > SANCTIONED_AT ? ' met' : ''}`}>
+              <span style={{ width: `${Math.min(100, (actingGrade / (SANCTIONED_AT + 2)) * 100)}%` }} />
+            </div>
+            <div className="meter-labels">
+              <span>grade {actingGrade}</span>
+              <span>{actingGrade > SANCTIONED_AT ? 'senior enough' : 'not above sanctioning officer'}</span>
+            </div>
+          </div>
+        </div>
+        <div className="row" style={{ marginTop: '1.1rem' }}>
+          <button
+            className={actingGrade > SANCTIONED_AT ? 'mint' : undefined}
+            disabled={working || !commitmentId || !prevStateHash}
+            onClick={() => void restructure()}
+          >
+            {busy === 'restructure' ? 'Proving…' : 'Submit restructure'}
+          </button>
         </div>
       </div>
 
