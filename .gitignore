@@ -1,5 +1,5 @@
 # ==========================================================================
-#  VERITY — .gitignore
+#  Quorum — .gitignore
 #
 #  Committed BEFORE the first `npm install`. If node_modules/ or generated
 #  crypto material ever lands in history, it stays there forever and every
@@ -77,3 +77,25 @@ Thumbs.db
 
 
 ui-references/
+# --- Production material, kept locally but out of the submission -----------
+#  Everything below exists on disk and is deliberately not part of the repo:
+#  competition scrape and internal notes, the pre-Midnight Fabric-era docs,
+#  the reference deck and reference whitepaper, and the raw capture/edit
+#  material for the demo video. None of it is needed to build or run Quorum.
+requirements.txt
+handover.txt
+DEMO.md
+VIDEO.md
+VIDEO-SCRIPT.md
+CAPTURE.md
+RUNNING-ORDER.md
+shots.md
+recordings/
+scripts/record-shots.mjs
+slides/ReferenceSlide.pptx
+slides/video/
+whitePaper/VERITY_Whitepaper_v12.md
+whitePaper/figures/*.png
+whitePaper/figures/count.txt
+CLAUDE.md
+.claude/

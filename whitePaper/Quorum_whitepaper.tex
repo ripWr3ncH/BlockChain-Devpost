@@ -1,0 +1,618 @@
+% Quorum whitepaper — Brainwave 2026, Midnight Track.
+% Build:  tectonic Quorum_whitepaper.tex
+% XeTeX is assumed (tectonic's default), so no fontenc/inputenc.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.15cm,top=2.0cm,bottom=2.2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}      % [H] pins a figure where it is written, so it cannot
+                        % float above the heading of the section it belongs to
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{fancyvrb}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{titlesec}
+\usepackage{seqsplit}   % lets a 64-char hash wrap instead of running off the page
+\usepackage{xurl}       % lets a long URL break anywhere, for the bibliography
+\usepackage[hidelinks]{hyperref}
+
+% Typewriter identifiers and hashes offer no hyphenation points, so give the
+% line breaker a little room rather than letting it overrun the margin.
+\tolerance=1500
+\emergencystretch=2.5em
+\hbadness=3000
+
+\definecolor{ink}{HTML}{1A1524}
+\definecolor{accent}{HTML}{5B21B6}
+\definecolor{rule}{HTML}{C9C4D6}
+\definecolor{codebg}{HTML}{F7F5FB}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=accent,
+  citecolor=accent,
+  urlcolor=accent,
+  pdftitle={Quorum --- A board vote that proves itself},
+  pdfauthor={Oitijya Islam Auvro, Md. Nafiz Ahmed, Dewan Salman Rahman Zisan},
+  pdfsubject={Supervisory infrastructure for bank loan classification, built on Midnight}
+}
+
+% ---- headings -------------------------------------------------------------
+\titleformat{\section}{\large\bfseries\color{ink}}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{ink}}{\thesubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.25\baselineskip}{0.45\baselineskip}
+\titlespacing*{\subsection}{0pt}{0.85\baselineskip}{0.3\baselineskip}
+
+% ---- tables ---------------------------------------------------------------
+% L/R/C are ragged tabularx columns: they wrap without the interword stretching
+% that justified X columns produce in narrow cells.
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash\hsize=#1\hsize}X}
+\renewcommand{\arraystretch}{1.18}
+\setlength{\tabcolsep}{5pt}
+\captionsetup{font=small,labelfont=bf,skip=5pt}
+\captionsetup[table]{position=above}
+
+% ---- code -----------------------------------------------------------------
+% samepage: without it a listing that straddles a page break is split through
+% its own frame, leaving a box with no bottom rule on one page and no top rule
+% on the next. Better to move the whole block down.
+\fvset{fontsize=\small,frame=single,framesep=5pt,rulecolor=\color{rule},
+       xleftmargin=0pt,commandchars=\\\{\},samepage=true}
+
+\newcommand{\tbl}[1]{\vspace{2pt}\noindent\textbf{#1}\par\vspace{-4pt}}
+\setlist[itemize]{topsep=3pt,itemsep=1.5pt,parsep=0pt,leftmargin=1.3em}
+\setlist[enumerate]{topsep=3pt,itemsep=1.5pt,parsep=0pt,leftmargin=1.6em}
+\setlength{\parskip}{0.42\baselineskip}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+
+% ===========================================================================
+%  Title
+% ===========================================================================
+\begin{center}
+  {\Huge\bfseries\color{ink} QUORUM}\\[3pt]
+  {\large A board vote that proves itself}\\[6pt]
+  {\normalsize Supervisory infrastructure for bank loan classification, built on Midnight}\\[10pt]
+  {\small\bfseries Brainwave 2026 --- Midnight Track \quad$\cdot$\quad Team Logarithm}
+\end{center}
+
+\vspace{2pt}
+{\color{rule}\hrule height 0.8pt}
+\vspace{8pt}
+
+\begin{tabularx}{\textwidth}{@{}L{0.30}L{0.70}@{}}
+\textbf{Oitijya Islam Auvro} & Contract design, zero-knowledge circuits, wallet and provider layer \\
+\textbf{Md.\ Nafiz Ahmed} & Bridge service, deployment to Midnight Preview, end-to-end verification \\
+\textbf{Dewan Salman Rahman Zisan} & Front end, banking-regulation research, documentation \\
+\end{tabularx}
+
+\vspace{6pt}
+{\small\textbf{Repository} \quad\url{https://github.com/ripWr3ncH/BlockChain-Devpost}\\
+\textbf{Contract (Midnight Preview)} \quad\texttt{\seqsplit{08b5b8b1bb403524b1066615752512019714a64859f77bea868f8615fe0f51da}}}
+
+\vspace{4pt}
+{\color{rule}\hrule height 0.8pt}
+
+% ===========================================================================
+\section*{Abstract}
+\addcontentsline{toc}{section}{Abstract}
+
+Large corporate groups and politically connected borrowers take substantial bank loans and do not repay
+them. The loss is then concealed rather than recognised: instead of classifying the exposure, the bank
+grants a new repayment deadline, repeatedly, or writes the loan off. The book reports as performing,
+provisions stay small, and no loss is booked until the loss is public.
+
+The rules against this already exist. Classification must be justified in writing over two named
+signatures; rescheduling is capped and escalates to the board; a write-off needs board
+authorisation~\cite{brpd15,prudential}. What is missing is the \emph{record}. It is held by the
+institution being examined, it can be revised afterwards, and it is read when an inspection team is
+physically present. An Asset Quality Review of six banks assessed Tk~147,595 crore of non-performing
+loans against Tk~35,044 crore reported --- about 4.2 times~\cite{aqr}. That method works, and it reaches
+six banks at a time~\cite{aqr11}.
+
+The obvious remedy --- commit the approvals to a blockchain --- fails for a commercial reason. Proving
+board authorisation by publishing every director's signature hands a competitor the bank's governance
+record. Institutions decline, reasonably.
+
+\textbf{Quorum's claim is that this is a false choice.} A supervisor needs to know that \emph{enough of
+the right people approved}. It does not need to know \emph{which ones}. Quorum enforces a regulator's
+authority rules inside a Compact smart contract on Midnight, and proves two of them in zero knowledge: a
+$k$-of-$n$ board threshold over private director approval secrets, and a seniority comparison over a
+private officer grade. Only the verified count and the boolean result reach the ledger. The contract is
+deployed on Midnight Preview and both rules are verified against it end to end.
+
+{\small\textbf{Keywords} --- Midnight, Compact, zero-knowledge proofs, loan classification, board
+authorisation, supervisory technology}
+
+% ===========================================================================
+\section{The problem}
+
+\subsection{What actually gets hidden}
+
+A loan goes bad. The bank has three ways to keep it out of the classified column:
+
+\begin{enumerate}
+  \item \textbf{Reschedule it.} A rescheduling moves an exposure back above the classification line
+    immediately. The IMF states the defect in one sentence: \emph{``BB regulations allow immediate
+    reclassification of restructured exposures, masking underlying asset quality''}~\cite{imf}.
+  \item \textbf{Upgrade it qualitatively.} Move it out of a classified tier on judgment rather than on
+    days past due.
+  \item \textbf{Write it off.} Remove it from the reported non-performing total altogether.
+\end{enumerate}
+
+Each is legitimate in some circumstances, which is why each carries an authority requirement rather than
+a prohibition. The system that results is not one of absent rules but of rules whose evidence nobody can
+check between inspections.
+
+\subsection{The rules are not what is missing}
+
+Bangladesh Bank already requires that every classification be justified in writing over the signatures of
+both the assigning and the reviewing officer, maintained in the loan file and available to inspection
+teams~\cite[para 11(c)]{brpd15}. Rescheduling requires approval at least one level above the sanctioning
+authority, with board approval at the third and fourth attempt and a cap at three
+occasions~\cite{prudential}. Qualitative upgrades out of Sub-Standard are reserved to the
+board~\cite[para 6(d)]{brpd15}.
+
+These are specific, sensible rules. Three properties defeat them:
+
+\begin{itemize}
+  \item \textbf{The evidence is self-custodied.} The signatures sit in a file the examined institution
+    controls.
+  \item \textbf{It is revisable.} Nothing preserves what the record said before it was amended.
+  \item \textbf{It is read once.} An Asset Quality Review costs 120 calendar days per bank and
+    international audit firms~\cite{aqr11}. Bangladesh's gross non-performing loan ratio is the second
+    highest in the world after war-affected Ukraine~\cite{npl}, and the review programme reaches banks a
+    handful at a time.
+\end{itemize}
+
+``Board approved'' is, operationally, a field the bank fills in itself.
+
+\subsection{Why putting it on a public chain fails}
+
+The naive fix is to publish the approvals. It does not survive contact with a bank's board, for a reason
+that is not dishonest: a bank's governance record is commercially sensitive. Which directors approved
+which write-off, and when, is exactly the material a competitor would want. Publishing every director's
+signature to prove authorisation existed is a bad trade, and institutions refuse it.
+
+This is the specific point at which Midnight changes the available design space. The question a
+supervisor asks --- \emph{did enough of the right people approve?} --- and the question publication
+answers --- \emph{who were they and what did they sign?} --- are different questions. Only the second
+requires anyone to publish anything.
+
+% ===========================================================================
+\section{What Quorum is}
+
+\subsection{The claim}
+
+Quorum is a Compact smart contract, a bridge service and a web front end. The contract holds a loan's
+append-only event chain and a registry of directors, and it refuses any lifecycle event whose authority
+evidence does not satisfy the rule for that event type. Two of those rules are proved in zero knowledge.
+
+\textbf{Quorum adds no rule.} It changes where the evidence lives and what has to be true before an event
+can be constructed at all. A write-off submitted without sufficient board approval does not fail
+validation after the fact --- the transaction cannot be built.
+
+\subsection{Scope}
+
+Quorum does not recover money, does not capitalise an institution, and cannot establish that a valuation
+is truthful. It can record a falsehood: if the data entering it is manipulated, the contract will commit
+that data with valid proofs. What it removes is the ability to assert an authority that was never
+obtained, and the ability to revise the record afterwards without leaving a trace.
+
+All data in the deployed demonstration is synthetic. No real borrower, depositor or institution appears
+anywhere, and institution names are placeholders.
+
+% ===========================================================================
+\section{Design}
+
+\subsection{Roles and the director registry}
+
+Identity is an on-ledger role registry rather than a platform-level membership service. Four roles exist:
+\texttt{BANK\_A}, \texttt{BANK\_B}, \texttt{CENTRAL\_AUTHORITY} and \texttt{REGULATORY\_COUNCIL}.
+
+A director is registered by their own bank as a \textbf{commitment to a secret, not the secret}:
+
+\begin{Verbatim}
+publicKeyCommitment = persistentHash([secret])
+\end{Verbatim}
+
+Registration alone confers nothing. Only the Central Authority may \emph{confirm} a director, and the
+contract refuses a bank that attempts to confirm its own. This separation is the structural point: a bank
+that could seat its own board could authorise its own write-offs. Revocation is available to the Central
+Authority or the bank; a revoked director's slot stops counting immediately, while events already
+committed remain valid.
+
+\subsection{The append-only event chain}
+
+\texttt{originateLoan} opens a chain keyed on a commitment identifier. Every later event carries the
+previous state's hash, and the contract asserts it matches:
+
+\begin{Verbatim}
+assert(loan.prevStateHash == prevHash, "state divergence: append-only chain broken")
+\end{Verbatim}
+
+A record cannot therefore be quietly rewritten behind the supervisor: an amendment is itself an event, in
+sequence, with its own authority requirement.
+
+Eleven event types are modelled --- \texttt{ORIGINATION}, \texttt{RESCHEDULE}, \texttt{RESTRUCTURE},
+\texttt{RECLASSIFY\_UP}, \texttt{RECLASSIFY\_DOWN}, \texttt{WRITE\_OFF}, \texttt{RECOVERY},
+\texttt{COLLATERAL\_REVALUATION}, \texttt{ASSET\_PLEDGE}, \texttt{LC\_DEVOLVEMENT} and
+\texttt{CORRECTION}. Classification tiers run \texttt{STANDARD}, \texttt{SMA}, \texttt{SUB\_STANDARD},
+\texttt{DOUBTFUL}, \texttt{BAD\_LOSS}.
+
+Thresholds are not compiled in. A \texttt{RegulatoryConfig} struct holds \texttt{rescheduleCapOccasions},
+\texttt{boardEscalationFromAttempt}, \texttt{boardThresholdK} and \texttt{councilQuorum} as ledger state,
+changeable by a Regulatory Council member without redeploying. The bank cannot touch it.
+
+\subsection{The board-threshold circuit}
+
+This is the heart of the project. To approve an event, a director supplies their secret as a
+\textbf{private witness}. Inside the circuit, Quorum:
+
+\begin{enumerate}
+  \item re-derives \texttt{persistentHash([secret])} and compares it against the registered commitment;
+  \item counts the slot only if that director is confirmed and not revoked;
+  \item rejects duplicates pairwise, so one director cannot fill several slots to reach the threshold
+    alone;
+  \item discloses \textbf{only the resulting count}.
+\end{enumerate}
+
+% Two statements, two blocks: as one listing this is tall enough to land on a
+% page boundary, and a boxed listing does not survive being broken.
+\begin{Verbatim}
+const validCount = ((g0 ? 1 : 0) + (g1 ? 1 : 0)
+                  + (g2 ? 1 : 0) + (g3 ? 1 : 0)) as Uint<8>;
+\end{Verbatim}
+
+\begin{Verbatim}
+assert(disclose(validCount) >= config.boardThresholdK,
+       "board authorisation required: insufficient confirmed director signatures")
+\end{Verbatim}
+
+A verifier learns \emph{``enough directors approved.''} Nothing else crosses the boundary. The current
+implementation carries four board slots (\texttt{Vector<4, ...>}).
+
+Compact's \texttt{disclose()} analysis is what makes this checkable rather than conventional: a witness
+value becomes public ledger state only when explicitly wrapped, and the compiler rejects the contract
+otherwise. The privacy boundary is enforced at compile time, not by discipline.
+
+\subsection{The seniority rule}
+
+Not every event needs the board. A restructure needs \emph{rank}: it must be authorised at least one grade
+above the officer who sanctioned the loan, so that nobody clears their own decision. That comparison
+happens inside the circuit over a \textbf{private} grade, and only the boolean result is disclosed:
+
+\begin{Verbatim}
+const actingGrade = callerSeniority();
+assert(disclose(actingGrade > sanctioningSeniority),
+       "authority required: this event must be authorised at least
+        one grade above the sanctioning officer")
+\end{Verbatim}
+
+The reason for privacy differs from the board rule, and that is the point. An officer's grade is personnel
+data; publishing it on every reclassification would leak the institution's internal hierarchy to anyone
+reading the chain. The loan's \emph{sanctioning} grade is public, because it is the bar a later event must
+clear and a bar nobody can read is not a bar.
+
+\textbf{Two rules, two different privacy shapes} --- a count over a set, and a single comparison. One
+zero-knowledge rule can look like a party trick; two show the pattern generalises.
+
+\subsection{The decision table}
+
+\texttt{appendEvent} derives the required authority from the event itself.
+
+\begin{tabularx}{\textwidth}{@{}L{0.52}L{0.48}@{}}
+\toprule
+\textbf{Event} & \textbf{Required authority} \\
+\midrule
+\texttt{WRITE\_OFF} & Board threshold ($k$-of-$n$, ZK) \\
+\texttt{RESCHEDULE}, attempt $\geq$ \texttt{boardEscalationFromAttempt} & Board threshold ($k$-of-$n$, ZK) \\
+\texttt{RESCHEDULE}, earlier attempts & One level above sanctioning officer (ZK) \\
+\texttt{RECLASSIFY\_UP} out of a classified tier & Board threshold ($k$-of-$n$, ZK) \\
+\texttt{RECLASSIFY\_UP} otherwise & One level above sanctioning officer (ZK) \\
+\texttt{RESTRUCTURE}, \texttt{COLLATERAL\_REVALUATION}, \texttt{ASSET\_PLEDGE} & One level above sanctioning officer (ZK) \\
+\texttt{CORRECTION} & MD/CEO role \\
+\texttt{RECLASSIFY\_DOWN}, \texttt{RECOVERY}, \texttt{LC\_DEVOLVEMENT} & Mechanical --- arithmetic only \\
+\bottomrule
+\end{tabularx}
+
+\vspace{4pt}
+The rescheduling cap is enforced separately:
+
+\begin{Verbatim}
+assert(rsSeq <= config.rescheduleCapOccasions, "reschedule cap exceeded")
+\end{Verbatim}
+
+\subsection{The privacy boundary}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/fig1.pdf}
+\caption{What crosses into public ledger state. Everything on the left is a witness the circuit reads and
+never publishes; everything on the right is the whole of what a verifier learns.}
+\end{figure}
+
+% ===========================================================================
+\section{Implementation}
+
+\subsection{Architecture}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{figures/fig2.pdf}
+\caption{Deployed architecture. The bridge is a separate long-lived process for a structural reason, not a
+stylistic one (\S4.3).}
+\end{figure}
+
+\subsection{The contract}
+
+\texttt{commitment.compact} exports six circuits.
+
+\begin{tabularx}{\textwidth}{@{}L{0.34}L{0.66}@{}}
+\toprule
+\textbf{Circuit} & \textbf{Authority required} \\
+\midrule
+\texttt{originateLoan} & a bank (\texttt{BANK\_A} / \texttt{BANK\_B}) \\
+\texttt{appendEvent} & the institution owning the loan, plus the event's own rule (\S3.5) \\
+\texttt{registerDirector} & the bank itself --- \texttt{role == institution} \\
+\texttt{confirmDirector} & Central Authority only \\
+\texttt{revokeDirector} & Central Authority or the bank \\
+\texttt{setRegulatoryConfig} & a Regulatory Council member \\
+\bottomrule
+\end{tabularx}
+
+\vspace{4pt}
+A genesis constructor seeds \texttt{config}, \texttt{councilMembers} and \texttt{centralAuthority}. Without
+it every ledger field starts at its zero value and the failure is silent rather than loud:
+\texttt{boardThresholdK} would be~0, \texttt{validCount >= 0} would be trivially true, and the board
+threshold could refuse nothing while appearing to work.
+
+\subsection{The bridge}
+
+A Midnight wallet must replay ledger history before it can sign anything, which takes minutes. It cannot
+be constructed per request. The bridge therefore syncs once at boot, caches its synced state to disk, and
+then serves circuit calls over HTTP. It holds the funded wallet, so it cannot live in a browser.
+
+\subsection{Deployment}
+
+The contract is deployed on \textbf{Midnight Preview} at
+\texttt{\seqsplit{08b5b8b1bb403524b1066615752512019714a64859f77bea868f8615fe0f51da}}, confirmed through
+the Preview indexer rather than only through our own bridge. The toolchain is Compact~0.31.1 and proof
+server~8.1.0~\cite{midnightdocs,compact}.
+
+\subsection{Verification}
+
+\texttt{scripts/midnight-smoke.mjs} drives the whole story over HTTP and \textbf{fails loudly if a
+write-off commits without board approval}. A run in which that succeeds is a failure even though nothing
+threw --- it would mean the threshold is not being enforced, which is the entire claim.
+
+\begin{Verbatim}
+4. Attempt WRITE_OFF with 0 of 2 approvals (must be refused)
+   refused    board authorisation required: insufficient confirmed director signatures
+
+5. Resubmit with 2 approvals (must commit)
+   committed  001f5b2ea0ec4ed2e7bd90c6addbe0384e797ba127356e9b3154b50bf9779d690b
+   block      586223
+
+6. RESTRUCTURE at the sanctioning grade (must be refused)
+   refused    authority required: this event must be authorised at least one grade
+              above the sanctioning officer
+
+7. Resubmit one grade above (must commit)
+   committed  002299262b44783ed8d04097807148e67175d5e6cc7a1fe19135493cc26660d283
+   block      586236
+
+PASSED
+\end{Verbatim}
+
+% This one floats: pinned with [H] it cannot fit under the transcript above and
+% pushes to the next page, leaving a third of this one blank. It is the last
+% item in its section, so letting it settle at the top of the next page costs
+% nothing and lets the following text fill the gap.
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.74\linewidth]{figures/fig3.pdf}
+\caption{The same submission, refused and then committed. The refusal is produced by the proof failing,
+not by a front-end check.}
+\end{figure}
+
+% ===========================================================================
+\section{Engineering findings}
+
+Four problems in this build were expensive enough to be worth recording.
+
+\subsection{Wallet sync throughput}
+
+A first-time sync replays every ledger event. The SDK's default batching walked the shielded stream at
+$\sim$80~events/s --- roughly five hours --- and exhausted a 6\,GB heap before finishing. The shielded
+wallet's configuration accepts a \texttt{batchSize}; at 5,000 the same scan runs at
+\textbf{$\sim$14,000~events/s with resident memory flat near 340\,MB}. That single number is the
+difference between ``cannot sync at all'' and ``syncs in two minutes.''
+
+\subsection{Preview versus PreProd}
+
+The DUST wallet's batch size is \textbf{hardcoded at 10 events per tick} inside the SDK, so it cannot be
+tuned and runs at 60--280~events/s regardless.
+
+\begin{tabularx}{\textwidth}{@{}L{0.20}L{0.30}L{0.50}@{}}
+\toprule
+\textbf{Network} & \textbf{Stream length} & \textbf{First sync} \\
+\midrule
+Preview & $\sim$151,000 events & tens of minutes --- workable \\
+PreProd & $\sim$1,453,000 events & over nine hours, and it exhausts memory first \\
+\bottomrule
+\end{tabularx}
+
+\vspace{4pt}
+Preview is therefore the default. The competition rules accept either.
+
+\subsection{Duplicate WASM instances}
+
+Two installs of \texttt{@midnight-ntwrk/onchain-runtime-v3} --- even at the \emph{same version} --- mean
+two WASM instantiations, and \texttt{instanceof} fails across them. The symptom is a bare
+\texttt{expected instance of StateValue} from deep inside a transaction merge. It needs one \emph{hoisted}
+copy, not merely one version.
+
+\subsection{Windows file URLs}
+
+\texttt{new URL(import.meta.url).pathname} keeps a leading slash on Windows, so \texttt{path.resolve}
+produces \texttt{G:\textbackslash G:\textbackslash\ldots}. Everything derived from it silently pointed at
+a directory that does not exist, and the deploy failed \emph{after} half an hour of syncing, with an error
+about a missing verifier key that was sitting on disk. Use \texttt{fileURLToPath}. A
+\texttt{preflight()} check now catches this class of bug in two seconds.
+
+% ===========================================================================
+\section{What is built, and what is not}
+
+\subsection{Built and verified against the live contract}
+
+\begin{itemize}
+  \item \texttt{commitment.compact} --- six circuits, a real $k$-of-$n$ board threshold proved in zero
+    knowledge, and a seniority rule proved over a private grade.
+  \item Wallet, provider and deploy layer, with state caching so restarts take seconds.
+  \item Bridge service and Next.js board room, exercised end to end by the smoke test.
+\end{itemize}
+
+\subsection{Limits we do not paper over}
+
+\begin{enumerate}
+  \item \textbf{Board approvals are replayable across events.} An approval proves knowledge of the
+    preimage of a registered commitment. It is \emph{not} a signature over the event, so a bank that has
+    collected a director's secret once could reuse it for a later vote without asking again. Binding an
+    approval to a specific event needs a per-event registration step this registry does not model.
+  \item \textbf{Director identities are still disclosed.} Looking a director up in a public ledger
+    \texttt{Map} requires a public key. What the zero-knowledge layer buys here is \textbf{credential
+    secrecy, not voter anonymity}.
+  \item \textbf{\texttt{callerRole} is asserted by the bridge.} That is acceptable for a prototype in
+    which one operator drives every party, but it is \textbf{not a security boundary}; production would
+    derive the role from the caller's own key.
+  \item \textbf{Only the \texttt{commitment} module exists.} Two further modules were designed and are not
+    built here: cross-bank encrypted exposure aggregation, and depositor claim tokens. They appear in
+    \S8 as future work, not as delivered features.
+  \item \textbf{It can record a falsehood.} If the core banking data is manipulated upstream, Quorum
+    commits it with valid proofs. The defence is attribution and reconciliation, and neither prevents
+    coordinated internal falsification.
+\end{enumerate}
+
+% ===========================================================================
+\section{From Fabric to Midnight}
+
+A predecessor of this project ran on Hyperledger Fabric~\cite{fabric}. Porting to Midnight was not a
+change of hosting; it changed what the contract can honestly claim.
+
+\begin{tabularx}{\textwidth}{@{}L{0.24}L{0.38}L{0.38}@{}}
+\toprule
+ & \textbf{Fabric version} & \textbf{Midnight version} \\
+\midrule
+\textbf{Board approval evidence} & every director signature submitted \textbf{in cleartext} as a
+transaction argument & approval secrets are a \textbf{private witness}; only the count that verified is
+disclosed \\
+\textbf{Seniority evidence} & acting grade submitted in cleartext & grade is a private witness; only the
+comparison is disclosed \\
+\textbf{Regulatory thresholds} & hardcoded, with jurisdiction-specific citations &
+\texttt{RegulatoryConfig} ledger struct, Council-governed, changeable without redeploying \\
+\textbf{Who may confirm a director} & MSP identity & on-ledger role registry; a bank still cannot
+constitute its own board \\
+\textbf{Privacy enforcement} & convention and code review & \texttt{disclose()} analysis, checked by the
+compiler \\
+\bottomrule
+\end{tabularx}
+
+\vspace{4pt}
+The Fabric implementation is removed from the working tree and survives in git history at commit
+\texttt{79eeef7} for anyone who wants to compare the two approaches.
+
+% ===========================================================================
+\section{Roadmap}
+
+\begin{tabularx}{\textwidth}{@{}L{0.14}L{0.56}L{0.30}@{}}
+\toprule
+ & \textbf{Scope} & \textbf{Depends on} \\
+\midrule
+\textbf{Now} & Six circuits on Preview; board threshold and seniority proved in ZK; bridge and board room
+& delivered \\
+\textbf{Next} & Bind approvals to a specific event hash, closing limit \S6.2(1); derive
+\texttt{callerRole} from the caller's key, closing \S6.2(3) & contract work only \\
+\textbf{Then} & Cross-institution exposure aggregation under encryption --- a borrower group's system-wide
+total without any bank exposing its book & more than one participating institution \\
+\textbf{Later} & Depositor claim tokens bound to signed balance leaves & resolution-law authorisation \\
+\bottomrule
+\end{tabularx}
+
+\vspace{4pt}
+The first two rows need no other participant. That sequencing is deliberate: a supervisory network that
+must be complete before it is useful is a network that never starts.
+
+% ===========================================================================
+\section{Conclusion}
+
+The losses were not undetectable --- an Asset Quality Review found roughly four times the non-performing
+loans six banks had reported~\cite{aqr}. Nor were the rules absent: classification already needs two named
+signatures, rescheduling is already capped, and a write-off already needs the
+board~\cite{brpd15,prudential}.
+
+What was missing was a record anyone could check between inspections, and the only obvious way to build
+one asked banks to publish their governance in exchange. Quorum declines that trade. A regulator's rule
+runs inside a Compact contract; the credentials that satisfy it stay in a private witness; and the ledger
+learns a count and a boolean.
+
+It does not make bankers honest. It makes dishonesty something that has to be committed deliberately, in a
+record its author cannot afterwards quietly revise, against a rule the code checks before the transaction
+can exist at all.
+
+% ===========================================================================
+\begin{thebibliography}{10}
+\small
+
+\bibitem{imf}
+International Monetary Fund, \emph{Bangladesh: 2025 Article IV Consultation --- Press Release; Staff
+Report; and Statement by the Executive Director for Bangladesh}, IMF Country Report No.~26/24,
+30~January 2026.
+\url{https://www.imf.org/en/publications/cr/issues/2026/01/30/bangladesh-2025-article-iv-consultation-press-release-staff-report-and-statement-by-the-573579}
+
+\bibitem{aqr}
+The Daily Star, \emph{Audits expose hidden bad loans at 6 Islamic banks}, 20~July 2025.
+\url{https://www.thedailystar.net/business/banking/news/audits-expose-hidden-bad-loans-6-islamic-banks-3944166}
+
+\bibitem{aqr11}
+The Business Standard, \emph{11 troubled banks to face asset quality test by int'l firms from January},
+2026.
+\url{https://www.tbsnews.net/economy/banking/11-troubled-banks-face-asset-quality-test-intl-firms-january-1508636}
+
+\bibitem{npl}
+The Business Standard, \emph{Bangladesh has world's second-highest NPL rate after war-hit Ukraine}, 2026.
+\url{https://www.tbsnews.net/economy/banking/bangladesh-has-worlds-second-highest-npl-rate-after-war-hit-ukraine-1482606}
+
+\bibitem{brpd15}
+Bangladesh Bank, \emph{BRPD Circular No.~15, 27~November 2024 --- Master Circular: Loan Classification and
+Provisioning}, effective 1~April 2025.
+\url{https://www.bb.org.bd/mediaroom/circulars/brpd/nov272024brpd15e.pdf}
+
+\bibitem{prudential}
+Bangladesh Bank, \emph{Prudential Regulation for Banks: Selected Issues}, April 2024, ``Loan Rescheduling
+and Restructuring'', pp.~114--117.
+\url{https://www.bb.org.bd/aboutus/regulationguideline/prudregapr2024.pdf}
+
+\bibitem{midnightdocs}
+Midnight Network, \emph{Developer documentation}. \url{https://docs.midnight.network/}
+
+\bibitem{compact}
+Midnight Network, \emph{Compact compiler and language toolchain}.
+\url{https://github.com/midnightntwrk/compact}
+
+\bibitem{fabric}
+Hyperledger Fabric, \emph{The Ordering Service}.
+\url{https://hyperledger-fabric.readthedocs.io/en/latest/orderer/ordering_service.html}
+
+\bibitem{repo}
+Team Logarithm, \emph{Quorum --- source repository}.
+\url{https://github.com/ripWr3ncH/BlockChain-Devpost}
+
+\end{thebibliography}
+
+\end{document}
