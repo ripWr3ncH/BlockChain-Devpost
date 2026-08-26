@@ -19,24 +19,24 @@ authorised a write-off is proved in **zero knowledge** — the directors' creden
 
 <br><br>
 
-### 📚 Read these too
+### Read these too
 
 <table>
 <tr>
 <td align="center" width="34%">
   <a href="https://drive.google.com/file/d/1wgVCV2mz8iZhXRm5dpX8YeA0t28jqTwH/view?usp=sharing">
-  <b>📄 &nbsp;WHITEPAPER&nbsp;(PDF)</b></a>
+  <b>WHITEPAPER&nbsp;(PDF)</b></a>
   <br><br>
   <sub>10 pages. The problem, both<br>zero-knowledge circuits, the<br>deployment, and the limits.</sub>
 </td>
 <td align="center" width="33%">
   <a href="https://docs.google.com/presentation/d/1bE153LTVhCv--GqphFpmCYK1hnEkhFdk/edit?usp=sharing&ouid=101782489806446060113&rtpof=true&sd=true">
-  <b>📊 &nbsp;PITCH&nbsp;DECK</b></a>
+  <b>PITCH&nbsp;DECK</b></a>
   <br><br>
   <sub>8 slides. The pitch in the<br>order it is told in the video.</sub>
 </td>
 <td align="center" width="33%">
-  <a href="https://youtu.be/dh57TB278Oc"><b>▶️ &nbsp;DEMO&nbsp;VIDEO</b></a>
+  <a href="https://youtu.be/dh57TB278Oc"><b>DEMO&nbsp;VIDEO</b></a>
   <br><br>
   <sub>3 minutes. Watch the contract<br>refuse a write-off, then accept it.</sub>
 </td>
@@ -485,14 +485,14 @@ MIT — see [LICENSE](LICENSE).
 <tr>
 <td align="center" width="34%">
   <a href="https://drive.google.com/file/d/1wgVCV2mz8iZhXRm5dpX8YeA0t28jqTwH/view?usp=sharing">
-  <b>📄 &nbsp;WHITEPAPER&nbsp;(PDF)</b></a>
+  <b>WHITEPAPER&nbsp;(PDF)</b></a>
 </td>
 <td align="center" width="33%">
   <a href="https://docs.google.com/presentation/d/1bE153LTVhCv--GqphFpmCYK1hnEkhFdk/edit?usp=sharing&ouid=101782489806446060113&rtpof=true&sd=true">
-  <b>📊 &nbsp;PITCH&nbsp;DECK</b></a>
+  <b>PITCH&nbsp;DECK</b></a>
 </td>
 <td align="center" width="33%">
-  <a href="https://youtu.be/dh57TB278Oc"><b>▶️ &nbsp;DEMO&nbsp;VIDEO</b></a>
+  <a href="https://youtu.be/dh57TB278Oc"><b>DEMO&nbsp;VIDEO</b></a>
 </td>
 </tr>
 </table>
