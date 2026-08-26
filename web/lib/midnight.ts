@@ -1,5 +1,5 @@
 /**
- * VERITY — client for the Midnight bridge.
+ * QUORUM — client for the Midnight bridge.
  *
  * The bridge is a separate service from the legacy Fabric API for a structural
  * reason, not a stylistic one: a Midnight wallet has to replay ledger history

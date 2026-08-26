@@ -1,430 +1,573 @@
 /* ==========================================================================
-   VERITY — portal design system.
+   QUORUM — design system.
 
-   Palette taken from ui-references/. Warm paper, mint green, near-black ink,
-   pill geometry, generous whitespace.
+   Lilac ground, thick-outlined white cards, chunky pill controls, pastel
+   accent tiles, oversized mono numerals. Soft-toy geometry over a tool that
+   makes hard refusals.
 
-   The reference is a marketing page; this is a supervisory tool, so the
-   palette and typography carry over but the density does not. Regulators scan
-   tables, not hero sections.
+   ── WHY A PLAYFUL PALETTE FOR A SUPERVISORY TOOL ─────────────────────────
+   Because the whole argument is that this should be ordinary. Board approval
+   is a routine act that currently produces no durable record; dressing it in
+   institutional grey implies it needs a compliance department. It needs a
+   button.
 
    ── HOW COLOUR IS ALLOWED TO BE USED ─────────────────────────────────────
-   Mint is not decoration. It means ONE thing: this landed on the ledger.
-   Three semantic colours and no others:
+   The pastels are surfaces. Meaning lives in exactly three colours:
 
-     mint     committed — a transaction is in a block
-     coral    refused   — a rule fired and stopped something
-     amber    watch     — an indicator worth attention, never a verdict
+     mint     committed — a proof landed on the ledger
+     coral    refused   — a circuit declined and said why
+     amber    pending   — proving is in flight, no verdict yet
 
-   Anything else is ink, paper or rule. If you find yourself reaching for a
-   fourth colour, the information design is wrong, not the palette.
+   Every other colour is ground, ink or outline. Reaching for a fourth
+   semantic colour means the information design is wrong, not the palette.
 
-   Fonts come through next/font, which downloads at BUILD time and serves from
-   our own origin — so the venue needs no internet.
+   Outlines, not shadows, carry hierarchy: every card is a 2px near-black
+   stroke. Depth comes from a hard offset shadow, never a blur — a blur reads
+   as material, and this interface is paper.
    ========================================================================== */
 
 :root {
   /* ---- ground ---- */
-  --paper:      #f1f0ea;
-  --paper-2:    #e9e8e0;
+  --lilac:      #cbb8e9;
+  --lilac-2:    #ded2f2;
+  --lilac-3:    #efe9f9;
   --surface:    #ffffff;
-  --surface-2:  #f7f6f2;
+  --surface-2:  #faf8fd;
 
-  /* ---- ink ---- */
-  --ink:        #111111;
-  --ink-2:      #57564f;
-  --ink-3:      #8b8a80;
-  --rule:       #dcdbd2;
-  --rule-soft:  #e9e8e1;
+  /* ---- ink + outline ---- */
+  --ink:        #1a1524;
+  --ink-2:      #5b5470;
+  --ink-3:      #8e88a3;
+  --stroke:     #1a1524;
+  --rule:       #e4dff0;
+
+  /* ---- pastel accent tiles (surfaces, not meaning) ---- */
+  --mint-tile:   #bfe9dc;
+  --peach-tile:  #ffc9a3;
+  --pink-tile:   #ffc2d4;
+  --lemon-tile:  #ffe9a8;
+  --violet-tile: #d9c8f7;
 
   /* ---- mint: committed ---- */
-  --mint:       #6fe79f;
-  --mint-2:     #47d883;
-  --mint-deep:  #0a7a43;
-  --mint-soft:  #e2fbec;
+  --mint:       #3fbf8f;
+  --mint-deep:  #0c6b4a;
+  --mint-soft:  #d9f5ea;
 
   /* ---- coral: refused ---- */
-  --coral:      #c7382b;
-  --coral-soft: #fceae6;
+  --coral:      #e0574d;
+  --coral-deep: #9c2b23;
+  --coral-soft: #ffe0dc;
 
-  /* ---- amber: watch ---- */
-  --amber:      #8a6100;
-  --amber-soft: #fbf1d9;
+  /* ---- amber: pending ---- */
+  --amber:      #c98a1a;
+  --amber-soft: #ffeecb;
 
-  --shadow:    0 1px 2px rgba(17,17,17,.05), 0 10px 30px -22px rgba(17,17,17,.35);
-  --shadow-lg: 0 2px 4px rgba(17,17,17,.06), 0 18px 44px -26px rgba(17,17,17,.4);
+  /* Hard offset, never blurred: the cards are paper, not glass. */
+  --shadow:    3px 3px 0 var(--stroke);
+  --shadow-lg: 5px 5px 0 var(--stroke);
+  --shadow-sm: 2px 2px 0 var(--stroke);
 
   --r-pill: 999px;
-  --r-card: 14px;
-  --r-input: 9px;
+  --r-card: 20px;
+  --r-tile: 18px;
+  --r-input: 12px;
+
+  --border: 2px solid var(--stroke);
+  --border-thin: 1.5px solid var(--stroke);
 }
 
-* { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: border-box; }
 
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--paper);
+  background: var(--lilac);
   color: var(--ink);
-  font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 15.5px;
-  line-height: 1.55;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
 
-a { color: inherit; }
-.mono, code { font-family: var(--font-mono), ui-monospace, monospace; }
+body { min-height: 100vh; }
 
-/* ==========================================================================
-   Chrome
-   ========================================================================== */
+.mono, code, kbd, pre {
+  font-family: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  font-variant-ligatures: none;
+}
 
-.shell { min-height: 100vh; display: flex; flex-direction: column; }
+/* --------------------------------------------------------------------------
+   Shell
+   -------------------------------------------------------------------------- */
+
+.shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.25rem 1.25rem 5rem;
+}
 
 .topbar {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding: .85rem 1.75rem;
-  background: var(--paper);
-  border-bottom: 1px solid var(--rule);
-  flex-wrap: wrap;
-  position: sticky;
-  top: 0;
-  z-index: 20;
+  justify-content: space-between;
+  gap: 1rem;
+  background: var(--mint-tile);
+  border: var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow);
+  padding: .7rem 1rem;
+  margin-bottom: 1rem;
 }
 
-/* The mark: a solid black bar, as in the reference. */
-.brand { display: flex; align-items: center; gap: .6rem; font-weight: 800; font-size: 1.05rem; letter-spacing: -.02em; }
-.brand::before {
-  content: '';
-  width: 9px; height: 24px;
-  background: var(--ink);
-  border-radius: 2px;
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -.02em;
+  color: var(--ink);
 }
+
+.brand .dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: var(--border);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  font-size: .8rem;
+  line-height: 1;
+}
+
 .brand .tag {
   font-family: var(--font-mono), monospace;
-  font-size: .6rem;
-  letter-spacing: .12em;
+  font-size: .62rem;
+  font-weight: 600;
   text-transform: uppercase;
-  color: var(--ink-3);
-  font-weight: 500;
-  align-self: flex-end;
-  padding-bottom: .3rem;
+  letter-spacing: .08em;
+  background: var(--surface);
+  border: var(--border-thin);
+  border-radius: var(--r-pill);
+  padding: .18rem .55rem;
 }
 
-.topbar nav { display: flex; gap: .3rem; margin-left: auto; align-items: center; }
+.topbar nav { display: flex; gap: .4rem; }
+
 .topbar nav a {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--ink);
   text-decoration: none;
-  font-size: .87rem;
-  font-weight: 600;
-  padding: .45rem .95rem;
+  padding: .45rem .9rem;
   border-radius: var(--r-pill);
-  color: var(--ink-2);
-  transition: background .12s, color .12s;
+  border: 2px solid transparent;
 }
-.topbar nav a:hover { background: var(--paper-2); color: var(--ink); }
-.topbar nav a[data-active="true"] { background: var(--ink); color: #fff; }
+
+.topbar nav a[data-active='true'] {
+  background: var(--surface);
+  border: var(--border);
+  box-shadow: var(--shadow-sm);
+}
 
 .synthetic-banner {
-  background: var(--amber-soft);
-  border-bottom: 1px solid var(--rule);
-  color: var(--amber);
+  background: var(--lemon-tile);
+  border: var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-sm);
+  padding: .6rem .9rem;
   font-size: .76rem;
-  padding: .45rem 1.75rem;
-  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ink);
+  margin-bottom: 1.5rem;
 }
 
-.identity-bar {
-  padding: .8rem 1.75rem;
-  border-bottom: 1px solid var(--rule);
-  background: var(--surface);
-}
+main { display: block; }
 
-main { flex: 1; padding: 2rem 1.75rem 5rem; max-width: 1440px; width: 100%; margin: 0 auto; }
-
-/* ==========================================================================
+/* --------------------------------------------------------------------------
    Type
-   ========================================================================== */
+   -------------------------------------------------------------------------- */
 
 h1 {
-  font-size: clamp(1.7rem, 3vw, 2.35rem);
-  font-weight: 800;
+  font-size: clamp(2rem, 5vw, 3.3rem);
+  line-height: 1.02;
   letter-spacing: -.035em;
-  line-height: 1.08;
+  font-weight: 800;
+  margin: .4rem 0 0;
+}
+
+h2 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  margin: 2.25rem 0 .9rem;
+}
+
+h3 {
+  font-size: .98rem;
+  font-weight: 800;
+  letter-spacing: -.015em;
   margin: 0 0 .5rem;
 }
-h2 {
-  font-size: 1.12rem;
-  font-weight: 700;
-  letter-spacing: -.015em;
-  margin: 2.4rem 0 .9rem;
-}
-h3 { font-size: .93rem; font-weight: 700; letter-spacing: -.01em; margin: 0 0 .55rem; }
 
-.sub { color: var(--ink-2); margin: 0 0 1.75rem; max-width: 72ch; font-size: .96rem; }
+p { line-height: 1.6; margin: 0 0 .8rem; }
+
 .eyebrow {
   display: inline-block;
+  font-family: var(--font-mono), monospace;
   font-size: .68rem;
-  font-weight: 700;
-  letter-spacing: .1em;
+  font-weight: 600;
   text-transform: uppercase;
-  padding: .28rem .7rem;
+  letter-spacing: .1em;
+  background: var(--surface);
+  border: var(--border);
   border-radius: var(--r-pill);
-  background: var(--mint);
-  color: #06381f;
-  margin-bottom: .9rem;
+  padding: .3rem .75rem;
+  box-shadow: var(--shadow-sm);
 }
 
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
-.grid-side { display: grid; grid-template-columns: minmax(0,1fr) 23rem; gap: 1.1rem; align-items: start; }
-@media (max-width: 1040px) { .grid-2, .grid-3, .grid-side { grid-template-columns: 1fr; } }
+.sub { color: var(--ink-2); font-size: .95rem; }
 
-/* ==========================================================================
-   Cards
-   ========================================================================== */
+.hint {
+  font-size: .8rem;
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin: .5rem 0 0;
+}
+
+/* --------------------------------------------------------------------------
+   Cards + tiles
+   -------------------------------------------------------------------------- */
 
 .card {
   background: var(--surface);
-  border: 1px solid var(--rule-soft);
+  border: var(--border);
   border-radius: var(--r-card);
-  padding: 1.25rem 1.35rem;
   box-shadow: var(--shadow);
+  padding: 1.1rem 1.15rem;
 }
-.card > h3 {
-  font-family: var(--font-mono), monospace;
-  font-size: .67rem;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  font-weight: 500;
-  margin: 0 0 1rem;
-}
-.card.linky { text-decoration: none; color: inherit; display: block; transition: transform .12s, box-shadow .12s; }
-.card.linky:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-.card.accent { border-left: 3px solid var(--mint-2); }
 
-/* ==========================================================================
-   Identity switcher — the most important control on the page
-   ========================================================================== */
+.card.lilac  { background: var(--lilac-3); }
+.card.flat   { box-shadow: none; }
 
-.identity { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
-.identity > label { margin: 0; font-weight: 600; color: var(--ink); font-size: .84rem; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
 
-.identity select {
-  font-family: inherit;
-  font-size: .88rem;
-  font-weight: 600;
-  padding: .5rem 2rem .5rem .85rem;
-  border: 1.5px solid var(--ink);
-  border-radius: var(--r-pill);
+.row { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+
+/* Device-tile geometry from the reference: a chunky icon chip, a bold label,
+   and a small status pill underneath. */
+.tile {
   background: var(--surface);
-  color: var(--ink);
-  min-width: 16rem;
-  cursor: pointer;
-  appearance: none;
-  background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
-  background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
+  border: var(--border);
+  border-radius: var(--r-tile);
+  box-shadow: var(--shadow);
+  padding: .85rem .9rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  min-height: 104px;
 }
 
-.cert {
+.tile.mint   { background: var(--mint-tile); }
+.tile.violet { background: var(--violet-tile); }
+.tile.peach  { background: var(--peach-tile); }
+.tile.pink   { background: var(--pink-tile); }
+.tile.lemon  { background: var(--lemon-tile); }
+
+.tile .chip {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  border: var(--border);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.tile .label { font-weight: 800; font-size: .9rem; letter-spacing: -.01em; }
+
+.status {
+  align-self: flex-start;
   font-family: var(--font-mono), monospace;
-  font-size: .69rem;
-  color: var(--ink-2);
-  background: var(--surface-2);
-  border: 1px solid var(--rule-soft);
-  padding: .34rem .7rem;
-  border-radius: var(--r-pill);
-}
-.cert b { color: var(--mint-deep); font-weight: 700; }
-
-/* ==========================================================================
-   Tables
-   ========================================================================== */
-
-.scroller { overflow-x: auto; margin: 0 -.35rem; padding: 0 .35rem; }
-table { width: 100%; border-collapse: collapse; font-size: .87rem; }
-th, td { text-align: left; padding: .58rem .7rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
-thead th {
-  font-family: var(--font-mono), monospace;
-  font-size: .64rem;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  font-weight: 500;
-  border-bottom: 1.5px solid var(--rule);
-  white-space: nowrap;
-}
-tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover { background: var(--surface-2); }
-td.num { font-variant-numeric: tabular-nums; text-align: right; font-family: var(--font-mono), monospace; }
-td.mono { font-family: var(--font-mono), monospace; font-size: .79rem; }
-
-/* ==========================================================================
-   Controls — black pill primary, as in the reference
-   ========================================================================== */
-
-button {
-  font-family: inherit;
-  font-size: .88rem;
+  font-size: .62rem;
   font-weight: 700;
-  letter-spacing: -.005em;
-  padding: .6rem 1.3rem;
-  border: 1.5px solid var(--ink);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border: var(--border-thin);
   border-radius: var(--r-pill);
-  background: var(--ink);
-  color: #fff;
-  cursor: pointer;
-  transition: transform .1s, background .12s, color .12s;
-}
-button:hover:not(:disabled) { transform: translateY(-1px); }
-button:active:not(:disabled) { transform: translateY(0); }
-button:disabled { opacity: .35; cursor: not-allowed; }
-
-button.mint { background: var(--mint); border-color: var(--mint); color: #06381f; }
-button.mint:hover:not(:disabled) { background: var(--mint-2); border-color: var(--mint-2); }
-button.ghost { background: transparent; color: var(--ink); }
-button.ghost:hover:not(:disabled) { background: var(--paper-2); }
-button.quiet { background: var(--surface-2); border-color: var(--rule); color: var(--ink-2); font-weight: 600; }
-button.small { padding: .38rem .85rem; font-size: .8rem; }
-
-label { display: block; font-size: .76rem; font-weight: 600; color: var(--ink-2); margin: .85rem 0 .3rem; }
-
-input, select.field {
-  width: 100%;
-  font-family: inherit;
-  font-size: .89rem;
-  padding: .55rem .8rem;
-  border: 1.5px solid var(--rule);
-  border-radius: var(--r-input);
+  padding: .16rem .5rem;
   background: var(--surface);
-  color: var(--ink);
-  transition: border-color .12s;
 }
-input:focus, select.field:focus { outline: none; border-color: var(--ink); }
-input[readonly] {
-  background: var(--surface-2);
-  color: var(--ink-2);
-  font-family: var(--font-mono), monospace;
-  font-size: .76rem;
-  border-style: dashed;
+
+.status.on      { background: var(--mint); color: #04301f; }
+.status.off     { background: var(--coral); color: #fff; }
+.status.pending { background: var(--amber-soft); }
+
+/* --------------------------------------------------------------------------
+   Controls
+   -------------------------------------------------------------------------- */
+
+button, .btn {
+  font-family: inherit;
+  font-size: .88rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--ink);
+  background: var(--peach-tile);
+  border: var(--border);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow);
+  padding: .6rem 1.15rem;
+  cursor: pointer;
+  transition: transform .06s ease, box-shadow .06s ease;
+}
+
+button:hover:not(:disabled), .btn:hover { transform: translate(1px, 1px); box-shadow: var(--shadow-sm); }
+button:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
+
+button:disabled {
+  opacity: .45;
   cursor: not-allowed;
+  box-shadow: var(--shadow-sm);
 }
 
-.check {
-  display: inline-flex;
-  align-items: center;
-  gap: .45rem;
-  margin: 0;
-  font-size: .86rem;
-  font-weight: 600;
-  color: var(--ink);
-  padding: .4rem .8rem .4rem .6rem;
-  border: 1.5px solid var(--rule);
-  border-radius: var(--r-pill);
-  cursor: pointer;
-  background: var(--surface);
-  transition: border-color .12s, background .12s;
+button.ghost { background: var(--surface); }
+button.mint  { background: var(--mint-tile); }
+button.lilac { background: var(--violet-tile); }
+
+/* The round + button from the reference. */
+button.round {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  display: grid;
+  place-items: center;
 }
-.check:hover { border-color: var(--ink-3); }
-.check:has(input:checked) { border-color: var(--mint-2); background: var(--mint-soft); }
-.check input { width: auto; margin: 0; accent-color: var(--mint-deep); }
 
-/* ==========================================================================
-   Outcomes — the refusal and the receipt carry the demo
-   ========================================================================== */
-
-.outcome { margin-top: 1.15rem; border-radius: var(--r-card); padding: 1.05rem 1.2rem; border: 1.5px solid; }
-
-.outcome.refused { background: var(--coral-soft); border-color: var(--coral); }
-.outcome.refused .code {
-  font-family: var(--font-mono), monospace;
-  font-weight: 700;
-  font-size: .8rem;
-  letter-spacing: .05em;
-  color: var(--coral);
+label {
   display: block;
-  margin-bottom: .45rem;
-}
-.outcome.refused .text { font-size: .92rem; color: #7d2318; margin: 0; }
-
-.outcome.committed { background: var(--mint-soft); border-color: var(--mint-2); }
-.outcome.committed .code {
-  font-family: var(--font-mono), monospace;
+  font-size: .76rem;
   font-weight: 700;
-  font-size: .8rem;
-  letter-spacing: .05em;
-  color: var(--mint-deep);
-  display: block;
-  margin-bottom: .7rem;
-}
-
-.receipt { display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1.1rem; margin: 0; }
-.receipt dt {
-  font-family: var(--font-mono), monospace;
-  font-size: .64rem;
-  letter-spacing: .09em;
   text-transform: uppercase;
-  color: var(--ink-3);
-  padding-top: .12rem;
+  letter-spacing: .06em;
+  color: var(--ink-2);
+  margin-bottom: .35rem;
 }
-.receipt dd { margin: 0; font-family: var(--font-mono), monospace; font-size: .78rem; word-break: break-all; }
 
-/* ==========================================================================
-   Pills
-   ========================================================================== */
+input[type='number'], input[type='text'], select {
+  font-family: var(--font-mono), monospace;
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface);
+  border: var(--border);
+  border-radius: var(--r-input);
+  box-shadow: var(--shadow-sm);
+  padding: .5rem .7rem;
+}
 
-.pill {
+input:focus-visible, button:focus-visible, a:focus-visible, select:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* The − 23 + stepper, lifted from the reference's temperature control. */
+.stepper { display: inline-flex; align-items: center; gap: .8rem; }
+
+.stepper .value {
+  font-family: var(--font-mono), monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  min-width: 4.2rem;
+  text-align: center;
+  background: var(--surface);
+  border: var(--border);
+  border-radius: var(--r-input);
+  box-shadow: var(--shadow-sm);
+  padding: .3rem .6rem;
+}
+
+.stepper button {
+  width: 36px; height: 36px; padding: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 1.1rem;
+  display: grid; place-items: center;
+}
+
+/* --------------------------------------------------------------------------
+   Progress — the board-approval meter
+   -------------------------------------------------------------------------- */
+
+.meter {
+  height: 26px;
+  background: var(--lilac-3);
+  border: var(--border);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+  position: relative;
+}
+
+.meter > span {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  border-radius: var(--r-pill);
+  transition: width .35s cubic-bezier(.3, 1.2, .5, 1);
+}
+
+.meter.met > span { background: var(--mint); }
+
+.meter-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono), monospace;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-top: .35rem;
+}
+
+/* --------------------------------------------------------------------------
+   Big stat, from the reference's kWh readouts
+   -------------------------------------------------------------------------- */
+
+.stat { display: flex; flex-direction: column; gap: .15rem; }
+
+.stat .value {
+  font-family: var(--font-mono), monospace;
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  line-height: 1;
+}
+
+.stat .label {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--ink-2);
+}
+
+.stat.alert .value { color: var(--coral-deep); }
+
+/* --------------------------------------------------------------------------
+   Outcomes — the two things a submission can produce
+   -------------------------------------------------------------------------- */
+
+.outcome {
+  border: var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow);
+  padding: .95rem 1.05rem;
+}
+
+.outcome.committed { background: var(--mint-soft); }
+.outcome.refused   { background: var(--coral-soft); }
+.outcome.pending   { background: var(--amber-soft); }
+
+.outcome .code {
   display: inline-block;
   font-family: var(--font-mono), monospace;
-  font-size: .65rem;
-  font-weight: 600;
-  letter-spacing: .05em;
-  padding: .2rem .6rem;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  border: var(--border-thin);
   border-radius: var(--r-pill);
+  background: var(--surface);
+  padding: .22rem .6rem;
+  margin-bottom: .6rem;
+}
+
+.outcome .text { margin: 0; font-size: .9rem; font-weight: 600; }
+
+.receipt {
+  display: grid;
+  grid-template-columns: minmax(88px, auto) 1fr;
+  gap: .3rem .9rem;
+  margin: 0;
+  font-size: .8rem;
+}
+
+.receipt dt {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: .68rem;
+  color: var(--ink-2);
+  padding-top: .12rem;
+}
+
+.receipt dd {
+  margin: 0;
+  font-family: var(--font-mono), monospace;
+  word-break: break-all;
+  line-height: 1.45;
+}
+
+/* --------------------------------------------------------------------------
+   Tables
+   -------------------------------------------------------------------------- */
+
+.scroller { overflow-x: auto; border-radius: var(--r-input); }
+
+table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+
+thead th {
+  text-align: left;
+  font-size: .66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--ink-2);
+  padding: .4rem .6rem;
+  border-bottom: var(--border-thin);
   white-space: nowrap;
 }
-.pill.mint   { background: var(--mint-soft);  color: var(--mint-deep); }
-.pill.coral  { background: var(--coral-soft); color: var(--coral); }
-.pill.amber  { background: var(--amber-soft); color: var(--amber); }
-.pill.quiet  { background: var(--surface-2);  color: var(--ink-2); border: 1px solid var(--rule-soft); }
-.pill.ink    { background: var(--ink);        color: #fff; }
 
-/* ==========================================================================
-   The EDI disclaimer — never optional, never dismissible
-   ========================================================================== */
-
-.disclaimer {
-  background: var(--amber-soft);
-  border: 1px solid #e8d9ae;
-  border-radius: var(--r-card);
-  padding: .8rem 1rem;
-  font-size: .82rem;
-  color: #6b4b04;
-  margin-bottom: 1.25rem;
+tbody td {
+  padding: .55rem .6rem;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: middle;
 }
 
-/* ==========================================================================
-   Stat tiles
-   ========================================================================== */
+tbody tr:last-child td { border-bottom: none; }
 
-.stat { display: flex; flex-direction: column; gap: .1rem; }
-.stat .value { font-size: 1.85rem; font-weight: 800; letter-spacing: -.035em; line-height: 1; font-variant-numeric: tabular-nums; }
-.stat .label { font-family: var(--font-mono), monospace; font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
-.stat.alert .value { color: var(--coral); }
-.stat.good .value { color: var(--mint-deep); }
+/* --------------------------------------------------------------------------
+   Steps — the numbered flow down the demo page
+   -------------------------------------------------------------------------- */
 
-/* ==========================================================================
-   Misc
-   ========================================================================== */
+.step { display: flex; align-items: center; gap: .6rem; margin-bottom: .15rem; }
 
-.empty { color: var(--ink-3); font-size: .87rem; padding: 2rem 0; text-align: center; }
-.err { color: var(--coral); font-size: .85rem; font-weight: 600; }
-.hint { color: var(--ink-3); font-size: .77rem; margin-top: .35rem; line-height: 1.45; }
-.row { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; }
-.spacer { flex: 1; }
-.divider { border: 0; border-top: 1px solid var(--rule-soft); margin: 1.15rem 0; }
+.step .n {
+  width: 28px; height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  border: var(--border);
+  background: var(--lemon-tile);
+  display: grid; place-items: center;
+  font-family: var(--font-mono), monospace;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.step.done .n { background: var(--mint); }
+
+.spacer { height: 1rem; }
+
+@media (max-width: 620px) {
+  .shell { padding: .9rem .9rem 4rem; }
+  .receipt { grid-template-columns: 1fr; gap: .1rem .9rem; }
+  .receipt dd { margin-bottom: .45rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+  button:hover, button:active { transform: none; }
+}

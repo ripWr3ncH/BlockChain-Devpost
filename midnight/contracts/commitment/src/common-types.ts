@@ -1,6 +1,6 @@
 // Adapted from midnightntwrk/example-counter's counter-cli/src/common-types.ts
 // (see midnight/reference/counter-example-common-types.ts). Points the generic
-// midnight-js contract types at the compiled Verity commitment contract instead
+// midnight-js contract types at the compiled Quorum commitment contract instead
 // of the counter example's.
 
 import type { MidnightProviders } from '@midnight-ntwrk/midnight-js/types';

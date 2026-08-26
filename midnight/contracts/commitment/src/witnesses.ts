@@ -1,4 +1,4 @@
-// VERITY — commitment contract witnesses.
+// QUORUM — private witnesses for the commitment contract.
 //
 // Real off-chain data a caller supplies privately to a circuit. Adapted to the
 // interface shape compact compile generated in ./managed/commitment/contract/index.d.ts:

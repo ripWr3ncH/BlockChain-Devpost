@@ -1,13 +1,13 @@
-// VERITY — Module I (commitment): loan lifecycle + board authority + governance.
+// QUORUM — loan lifecycle, board authority, and governance.
 //
-// Ported from chaincode/commitment/src/{contracts/lifecycle.ts, contracts/governance.ts,
-// domain/authority.ts}. Preserves the original mechanism (append-only event chain,
-// k-of-n board-threshold authority, council-governed parameters) but:
-//   - replaces Fabric MSP identity with an on-ledger address/role registry
-//   - replaces the BRPD-citation-specific rule table with a configurable RegulatoryConfig
-//   - proves the board threshold in zero knowledge (director signatures are a private
-//     witness; only pass/fail and a count commitment land on the public ledger) instead
-//     of submitting all signatures in cleartext as the Fabric version did
+// Ported from an earlier Hyperledger Fabric chaincode (kept in git history at commit
+// 79eeef7). It preserves that mechanism — an append-only event chain, k-of-n board
+// threshold authority, council-governed parameters — but changes three things:
+//   - Fabric MSP identity becomes an on-ledger role registry
+//   - the jurisdiction-specific rule table becomes a configurable RegulatoryConfig
+//   - the board threshold is proved in ZERO KNOWLEDGE. Director approval secrets are a
+//     private witness and only the verified COUNT is disclosed, where the Fabric version
+//     put every signature in the cleartext transaction argument.
 //
 // Compact treats every exported circuit's parameters as private by default — a value
 // only becomes public ledger state once explicitly wrapped in disclose(). That is the
@@ -17,8 +17,8 @@
 // use. The one deliberate exception is verifyBoardThreshold: the director signatures
 // themselves stay a private witness and only the pass/fail threshold check is disclosed.
 //
-// Compiled and iterated against `compact 0.31.1` (language version 0.23) — see
-// midnight/contracts/commitment/src/managed/commitment for build output.
+// Compiled against `compact 0.31.1` (language version 0.23); build output lands in
+// src/managed/commitment. Deployed and verified on Midnight Preview — see README.md.
 
 pragma language_version 0.23;
 
@@ -220,7 +220,7 @@ export circuit appendEvent(
   });
 }
 
-// Decision table — was chaincode/commitment/src/domain/authority.ts:requiredAuthority.
+// Decision table — the authority each event type demands.
 // Genericized: escalation attempt/cap now come from RegulatoryConfig, not a citation.
 circuit requiredAuthority(
   eventType: EventType,

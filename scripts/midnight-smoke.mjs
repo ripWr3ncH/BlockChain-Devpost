@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * VERITY — end-to-end smoke test against the Midnight bridge.
+ * QUORUM — end-to-end smoke test against the Midnight bridge.
  *
- * Drives the same story the /midnight page tells, but over HTTP so it can be run
+ * Drives the same story the board room tells, but over HTTP so it can be run
  * headless and its failures read cleanly:
  *
  *   1. read the deployed contract's genesis config

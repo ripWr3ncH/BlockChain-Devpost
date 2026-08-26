@@ -1,16 +1,19 @@
 'use client';
 
 /**
- * VERITY — portal chrome.
+ * QUORUM — portal chrome.
  *
- * The identity switcher that used to live here belonged to the Hyperledger Fabric
- * prototype, where role and seniority came from an X.509 certificate the gateway
- * read per request. On Midnight the caller's role is a private witness the circuit
- * checks, not a header this page sends, so there is nothing here to switch.
+ * The reference's top bar is a coloured strip with a round chip on the left and
+ * the screen name centred; this keeps that shape but puts navigation on the right,
+ * because there is more than one destination.
  *
- * The synthetic-data banner is permanent and cannot be dismissed. The whitepaper
- * lists the things Verity does not claim; the least this interface can do is never
- * let a screenshot be mistaken for real supervisory data.
+ * There is no identity switcher. The Fabric prototype had one, because role and
+ * seniority came from an X.509 certificate the gateway read per request. On
+ * Midnight the caller's role is a private witness the circuit checks — nothing
+ * this page sends, and so nothing here to switch.
+ *
+ * The synthetic-data banner is permanent and cannot be dismissed. The least this
+ * interface can do is never let a screenshot be mistaken for supervisory data.
  */
 
 import Link from 'next/link';
@@ -19,25 +22,32 @@ import type { ReactNode } from 'react';
 
 export function Shell({ children }: { children: ReactNode }): ReactNode {
   const pathname = usePathname();
-  const onMidnight = pathname.startsWith('/midnight');
+  const onBoard = pathname.startsWith('/board');
 
   return (
     <div className="shell">
       <header className="topbar">
         <Link href="/" className="brand" style={{ textDecoration: 'none' }}>
-          Verity
-          <span className="tag">{onMidnight ? 'Midnight Preview' : 'prototype'}</span>
+          <span className="dot" aria-hidden>
+            ◕
+          </span>
+          Quorum
+          <span className="tag">Midnight Preview</span>
         </Link>
         <nav>
-          <Link href="/midnight" data-active={onMidnight}>
-            Midnight portal
+          <Link href="/" data-active={!onBoard}>
+            Overview
+          </Link>
+          <Link href="/board" data-active={onBoard}>
+            Board room
           </Link>
         </nav>
       </header>
 
       <div className="synthetic-banner">
-        All data synthetic — no real borrower, depositor or institution appears. Institution names are
-        placeholders; no organisation has committed to participate.
+        <strong>All data synthetic.</strong> No real borrower, depositor or institution appears
+        anywhere. Institution names are placeholders and no organisation has committed to
+        participate.
       </div>
 
       <main>{children}</main>

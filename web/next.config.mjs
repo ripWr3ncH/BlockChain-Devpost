@@ -5,6 +5,6 @@ const nextConfig = {
   // carries no node_modules and the portal starts with `node server.js`.
   output: 'standalone',
   // The demo runs offline at the venue. No remote fonts, no CDN, no telemetry.
-  env: { VERITY_API: process.env.VERITY_API ?? 'http://localhost:4000' },
+  env: { QUORUM_API: process.env.QUORUM_API ?? 'http://localhost:4000' },
 };
 export default nextConfig;

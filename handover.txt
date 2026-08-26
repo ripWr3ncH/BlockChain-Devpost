@@ -1,4 +1,4 @@
-VERITY — HANDOVER NOTES
+QUORUM — HANDOVER NOTES
 Written: 2026-08-25, revised 2026-08-26
 Context: migrating from the BD-specific "BCOLBD 2026" competition build to the
 international "Brainwave 2026 – Midnight Track" (see requirements.txt at repo root
@@ -16,7 +16,7 @@ rather than quietly edited, because knowing WHICH notes to distrust matters.
 
 - "Genericization ... verified clean ... zero remaining hits" was NOT true outside
   the docs. Still BD-specific and now fixed: package.json's description ("BCOLBD
-  2026 prototype"), seed/src/cli.ts's default seed ('verity-bcolbd-2026'), and
+  2026 prototype"), seed/src/cli.ts's default seed ('quorum-bcolbd-2026'), and
   scripts/run-liability-commitment.mjs (`totalTaka`, 'en-BD' locale). Still BD-
   specific and NOT fixed, because they are Fabric-only and slated for deletion:
   network/ and redteam/ orderer domains (ord-bibm, ord-bb, ord-frc — these are
@@ -96,10 +96,10 @@ E) Bridge service (src/bridge.ts) — the Midnight back end, type-checks clean.
    serves circuit calls over HTTP. Endpoints: /health, /contract, /loans, /events,
    /directors/{provision,register,confirm,revoke}, /config.
 
-F) Frontend (web/app/midnight/page.tsx + web/lib/midnight.ts) — written, NOT yet
-   run. Drives the whole demo: set the rule, constitute a board, originate, then
-   attempt a write-off with too few approvals (circuit refuses) and again with
-   enough (commits, with a receipt).
+F) Frontend (web/app/board/page.tsx + web/lib/midnight.ts) — rebuilt in the
+   Quorum design system and rendering. Drives the whole demo: constitute a board,
+   originate, then attempt a write-off with too few approvals (circuit refuses)
+   and again with enough (commits, with a receipt).
 
 
 ============================================================================
@@ -130,7 +130,8 @@ B) [PARTLY DONE] The bridge and every circuit have now been exercised against th
    live contract via scripts/midnight-smoke.mjs — deploy, register/confirm director,
    originate, refused write-off, committed write-off. The /events board-approval
    ordering IS tested and works.
-   STILL UNTESTED: the web UI at /midnight has never been rendered in a browser. It
+   STILL UNTESTED BY HAND: the web UI at /board renders and builds, but nobody has
+   clicked through the full flow in a browser. It
    type-checks and `next build` succeeds, and it talks to the same endpoints the
    smoke test exercises, but no one has clicked it.
 
@@ -213,5 +214,5 @@ midnight/contracts/commitment/
   README.md                    — build status, toolchain gotchas, threshold scope
 midnight/reference/            — real example-counter source, ground truth
 web/lib/midnight.ts            — bridge client
-web/app/midnight/page.tsx      — the Midnight portal (untested)
+web/app/board/page.tsx      — the Midnight portal (untested)
 chaincode/, services/api/, network/, redteam/  — OLD Fabric stack, still present

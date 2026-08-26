@@ -9,9 +9,10 @@ import './globals.css';
  * so the venue needs no internet. A demo that depends on fonts.googleapis.com
  * resolving is a demo that can fail in front of judges for no good reason.
  *
- * Plus Jakarta Sans matches the geometric grotesque in ui-references/ —
- * high x-height, tight letterforms, heavy weights that hold up on a projector.
- * IBM Plex Mono carries hashes, transaction ids and refusal codes.
+ * Plus Jakarta Sans carries the rounded, high-x-height geometry the interface
+ * is built on, and holds its weight on a projector. IBM Plex Mono carries every
+ * number that has to be read exactly: hashes, transaction ids, block heights,
+ * and the approval count the whole demo turns on.
  */
 const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -28,9 +29,9 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Verity — supervisory prototype',
+  title: 'Quorum — a board vote that proves itself',
   description:
-    'Making loan classification tamper-evident. Brainwave 2026 Midnight Track prototype, Team Logarithm. Synthetic data throughout.',
+    'Board approval for loan write-offs, proved in zero knowledge on Midnight. The supervisor learns that enough directors approved; nothing else reaches the ledger. Brainwave 2026 Midnight Track, Team Logarithm. Synthetic data throughout.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

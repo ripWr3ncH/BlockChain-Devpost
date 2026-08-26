@@ -1,4 +1,4 @@
-// VERITY — Midnight bridge service.
+// QUORUM — Midnight bridge service.
 //
 // This is the back end for the Midnight build. It exists as its own long-lived
 // process for one hard reason: a first-time wallet sync against Preprod replays the

@@ -1,16 +1,15 @@
-// VERITY — commitment contract deploy/join/call API for services/api.
+// QUORUM — wallet, providers, and circuit calls for the commitment contract.
 //
 // Adapted from midnightntwrk/example-counter's counter-cli/src/api.ts (fetched from
 // https://raw.githubusercontent.com/midnightntwrk/example-counter/main/counter-cli/src/api.ts,
 // full copy kept at midnight/reference/counter-example-api.ts for reference). The wallet
 // construction, provider wiring, and dust-registration plumbing are generic midnight-js
 // boilerplate and port with no logic changes — only the contract-specific pieces
-// (compiled contract reference, circuit calls, ledger read) are Verity's.
+// (compiled contract reference, circuit calls, ledger read) are Quorum's.
 //
-// NOT YET RUN END-TO-END: this compiles against the shapes in
-// managed/commitment/contract/index.d.ts and the counter example's verified provider
-// code, but has not been executed against a live Preprod wallet in this session (no
-// funded seed available here). Treat as ready-to-run, not as verified-working.
+// VERIFIED END TO END against a live contract on Midnight Preview: deploy, director
+// registration and confirmation, loan origination, a refused write-off and a committed
+// one. Reproduce with `node scripts/midnight-smoke.mjs`. bridge.ts is the only consumer.
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -201,7 +200,7 @@ export const setRegulatoryConfig = async (
 // ══════════════════════════════════════════════════════════════════════════
 //  Everything below is unmodified wallet/provider plumbing, ported from the
 //  counter example (see file header). It has nothing to do with the
-//  commitment contract specifically — it is what any Verity contract module
+//  commitment contract specifically — it is what any Quorum contract module
 //  (exposure, claims) will also need, so it belongs here rather than being
 //  re-derived per contract.
 // ══════════════════════════════════════════════════════════════════════════

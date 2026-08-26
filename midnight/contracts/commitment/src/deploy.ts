@@ -50,9 +50,9 @@ async function main() {
   console.log(`Deployed commitment contract at: ${contractAddress}`);
   console.log(`Private state id: ${commitmentPrivateStateId}`);
 
-  // Every later step — joinContract from services/api, the demo scripts, the
-  // frontend — needs this address, and it is only ever printed once. Persist it
-  // so a scrolled-away terminal is not the only copy.
+  // Every later step — the bridge's joinContract, the smoke test, the frontend —
+  // needs this address, and it is only ever printed once. Persist it so a
+  // scrolled-away terminal is not the only copy.
   const deploymentFile = path.resolve(currentDir, '..', `deployment.${network}.json`);
   writeFileSync(
     deploymentFile,

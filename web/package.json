@@ -1,8 +1,8 @@
 {
-  "name": "@verity/web",
+  "name": "@quorum/web",
   "version": "0.1.0",
   "private": true,
-  "description": "Verity portals — bank officer, supervisor, depositor",
+  "description": "Quorum portals — bank officer, supervisor, depositor",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

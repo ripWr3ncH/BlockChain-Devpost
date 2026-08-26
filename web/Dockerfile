@@ -1,5 +1,5 @@
 # ==========================================================================
-#  VERITY — the portal.
+#  QUORUM — the portal.
 #
 #  Built as a container for one reason: on the day, `./scripts/up.sh` has to
 #  leave a working http://localhost:3000 behind. A portal that only starts
@@ -9,7 +9,7 @@
 #  Note what this container does NOT do: it never talks to the API itself.
 #  Every fetch in web/lib/api.ts runs in the judge's BROWSER, against the
 #  published http://localhost:4000. So this image needs no network access to
-#  verity_net, no crypto material, and no identity of its own — which is also
+#  quorum_net, no crypto material, and no identity of its own — which is also
 #  why it is safe for it to be the only component reachable without one.
 # ==========================================================================
 

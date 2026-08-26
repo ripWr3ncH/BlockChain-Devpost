@@ -1,4 +1,4 @@
-# VERITY
+# QUORUM
 
 **A board vote that proves itself.**
 
@@ -39,7 +39,7 @@ commercially sensitive information. Proving you had board authorisation by **pub
 every director's signature** hands a competitor your governance record. That is a real
 reason institutions resist transparent ledgers, and it is not an unreasonable one.
 
-Verity's claim is that you should not have to choose. A supervisor needs to know that
+Quorum's claim is that you should not have to choose. A supervisor needs to know that
 *enough of the right people* approved. It does not need to know *who they were and what
 they signed*.
 
@@ -62,7 +62,7 @@ This is the heart of the project.
 
 A director registers a **commitment** to a secret, not the secret:
 `publicKeyCommitment = persistentHash([secret])`. To approve an event, they supply that
-secret privately. Inside the circuit, Verity:
+secret privately. Inside the circuit, Quorum:
 
 1. re-derives `persistentHash([secret])` and compares it to the registered commitment;
 2. counts the slot only if that director is **confirmed** and **not revoked**;
@@ -96,7 +96,7 @@ We would rather write the limits down than let a demo imply more than it deliver
 ```mermaid
 flowchart LR
     subgraph WEB["Front end · Next.js"]
-        UI["Midnight portal<br/><i>/midnight</i>"]
+        UI["Board room<br/><i>/board</i>"]
     end
 
     subgraph BRIDGE["Back end · bridge service"]
@@ -202,7 +202,7 @@ npm install
 npm --prefix web run dev
 ```
 
-Open <http://localhost:3000/midnight>.
+Open <http://localhost:3000/board>.
 
 ### 5. Verify it without clicking anything
 
@@ -232,7 +232,7 @@ committed with it, and the approving credentials never reached the ledger.
 
 ## The demonstration
 
-The `/midnight` page walks one story, and the interesting step is a refusal:
+The board room walks one story, and the interesting step is a refusal:
 
 1. **Set the rule.** Board threshold and reschedule cap are Council-governed ledger state,
    not constants baked into the contract.
@@ -321,7 +321,8 @@ midnight/contracts/commitment/
   README.md                  build status, toolchain gotchas, threshold scope
 midnight/reference/          upstream example-counter source, kept for comparison
 web/app/page.tsx             landing
-web/app/midnight/page.tsx    the Midnight portal
+web/app/page.tsx             overview
+web/app/board/page.tsx        the board room — the demo
 web/lib/midnight.ts          bridge client
 scripts/midnight-smoke.mjs   end-to-end verification
 ```

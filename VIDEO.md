@@ -1,4 +1,4 @@
-# Verity — video scripts
+# Quorum — video scripts
 
 > **Stale in one respect: written for the Hyperledger Fabric build, before the Midnight
 > port.** The framing, timings, and recording advice below still apply, but the on-screen
@@ -51,7 +51,7 @@ modules, no scrolling.
 | 0:19–0:26 | Tick two chips, submit. Second refusal: **supplied 2 of 3** | Two real signatures. Still refused. |
 | 0:26–0:33 | Tick the third, submit | Three, and it commits. |
 | 0:33–0:41 | Receipt panel. Cursor rests on **Endorsed by** | Block height, transaction id — and endorsed by the bank *and* Bangladesh Bank. Without the supervisor it does not commit at all. |
-| 0:41–0:45 | Cut to the Verity wordmark, `github.com/ripWr3ncH/Verity-TeamLogarithm` | Verity. Team Logarithm. |
+| 0:41–0:45 | Cut to the Quorum wordmark, `github.com/ripWr3ncH/Quorum-TeamLogarithm` | Quorum. Team Logarithm. |
 
 **≈ 95 words.** If you run long, cut the 0:19–0:26 two-signature beat — it is the best detail in the video, so
 cut anything else first.
@@ -124,7 +124,7 @@ The backup. Every beat is one you can also narrate live if you end up playing it
 |---|---|
 | Supervisor. Press **Rebuild from block 0**, confirm. Queue empties. | Everything on this dashboard is a projection. I've just deleted it. |
 | **On-screen caption: “90 seconds of replay, cut”** — then the queue full again, BD-4471 at 6.055 | The listener replays every committed block. They come back with the same scores. Nothing was lost, because nothing here was ever the record. |
-| Wordmark | Verity adds no rule. It makes dishonesty something you have to do deliberately, in your own name, in a record you cannot afterwards edit. |
+| Wordmark | Quorum adds no rule. It makes dishonesty something you have to do deliberately, in your own name, in a record you cannot afterwards edit. |
 
 **≈ 520 words at 145 wpm, landing near 3:05.** Time your first read-through before recording. If you run
 over 3:15, cut the histogram sentence in the 1:25 block — never a refusal beat. If you are badly over,

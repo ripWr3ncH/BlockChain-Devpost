@@ -44,7 +44,7 @@ midnight-js: wallet construction, provider bundle (privateState/publicData/zkCon
 wallet/midnight providers), deploy/join, and one function per circuit. The wallet/provider
 plumbing in `api.ts` is adapted near-verbatim from the real, working
 `midnightntwrk/example-counter` reference app (copy kept under `midnight/reference/`,
-fetched from GitHub) — only the contract-specific parts are Verity's.
+fetched from GitHub) — only the contract-specific parts are Quorum's.
 
 `npx tsc --noEmit -p tsconfig.json` passes with **zero type errors** against the actual
 installed packages. Note that `tsconfig.json` is new: the package had none, so an earlier

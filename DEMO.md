@@ -1,4 +1,4 @@
-# Verity — demo runbook (Midnight)
+# Quorum — demo runbook (Midnight)
 
 **Written against the system as it actually is**, not as it was planned. Where something
 is not verified, it says so.
@@ -16,7 +16,7 @@ Do this well before you record. The wallet sync is the long pole.
 
 ```bash
 # 1. Proof server (leave running)
-docker run -d --name verity-proof-server -p 6300:6300 \
+docker run -d --name quorum-proof-server -p 6300:6300 \
   midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
 
 # 2. Bridge — syncs the wallet, then serves circuit calls
@@ -65,7 +65,7 @@ Then the turn to Midnight:
 
 ## 2. The contract is real (30 seconds)
 
-Go to `/midnight`. Point at the **Deployed contract** card.
+Go to `/board`. Point at the **Deployed contract** card.
 
 > "That's a live contract address on Midnight Preview. Board threshold, reschedule cap —
 > those aren't constants compiled in, they're ledger state the council governs."
