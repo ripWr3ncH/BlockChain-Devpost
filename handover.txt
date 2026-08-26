@@ -1,13 +1,25 @@
 QUORUM — HANDOVER NOTES
-Written: 2026-08-25, revised 2026-08-26
-Context: migrating from the BD-specific "BCOLBD 2026" competition build to the
-international "Brainwave 2026 – Midnight Track" (see requirements.txt at repo root
-for the scraped competition rules).
+Written: 2026-08-25, revised 2026-08-26 (second revision)
 
-The 2026-08-26 revision reflects a session that rebuilt the toolchain from scratch,
-made the board-threshold check real, and got the wallet sync unblocked. Several
-claims in the previous revision turned out to be wrong; those are called out below
-rather than quietly edited, because knowing WHICH notes to distrust matters.
+STATE OF PLAY, IN ONE PARAGRAPH
+The project is functionally complete and deployed. A Compact contract is live on
+Midnight Preview and BOTH of its authority rules are verified on-chain: a board
+threshold proved in zero knowledge over private director approvals, and a
+seniority rule proved over a private officer grade. Front end, bridge and
+contract all work end to end, by script and by hand. The ONE outstanding
+submission requirement is the demo video. Read requirements.txt for the
+checklist and the prioritised next steps; read this file for how the thing was
+built and what will bite you.
+
+CONTEXT
+Originally a Hyperledger Fabric build for a BD-specific competition ("Verity"),
+migrated to the international Brainwave 2026 Midnight Track and renamed Quorum.
+The Fabric stack was removed once Midnight worked end to end; it survives in git
+history at commit 79eeef7. See requirements.txt for the competition rules.
+
+Successive revisions have corrected earlier claims rather than quietly editing
+them, because knowing WHICH notes to distrust is the most useful thing a handover
+can tell you. Section 0 is that list.
 
 
 ============================================================================
@@ -51,7 +63,9 @@ A) Compact toolchain — rebuilt from scratch on this machine, compiles clean.
    - Driving WSL from Windows: `$HOME` and shell vars get mangled through
      `wsl.exe -- bash -c '...'`. Write a .sh file and run `bash /tmp/x.sh` instead.
 
-B) verifyBoardThreshold — now a REAL k-of-n check (was a stub).
+B) Both authority rules are real and proved in zero knowledge.
+
+   verifyBoardThreshold — a REAL k-of-n check (was a stub).
    The old version hardcoded validCount = 0, so every board-authorised transition
    asserted `0 >= boardThresholdK` and could NEVER commit. Write-off, a third-plus
    reschedule, and an upgrade out of a classified tier were all impossible. It now
@@ -62,6 +76,14 @@ B) verifyBoardThreshold — now a REAL k-of-n check (was a stub).
    holding a director's secret could reuse it for a later vote. Director identities
    are still disclosed (a public Map lookup needs a public key) — what the ZK layer
    buys is credential secrecy, not voter anonymity.
+
+   verifySeniorityAbove — the second rule, added later. A restructure must be
+   authorised at least one grade above the officer who sanctioned the loan. The
+   acting grade is a private witness; only the comparison result is disclosed.
+   The loan's sanctioning grade IS public, deliberately: it is the bar a later
+   event must clear, and a bar nobody can read is not a bar. Note the two rules
+   have DIFFERENT privacy shapes — a count over a set, and a single comparison —
+   which is the better argument that the pattern generalises.
 
 C) Wallet sync — this was the real blocker, and it is now understood.
    A first-time sync replays the entire ledger. Two separate problems:
@@ -109,9 +131,11 @@ F) Frontend (web/app/board/page.tsx + web/lib/midnight.ts) — rebuilt in the
 A) [DONE] THE DEPLOY — COMPLETE AND VERIFIED END TO END.
    Contract on Midnight Preview:
      08b5b8b1bb403524b1066615752512019714a64859f77bea868f8615fe0f51da
-   `node scripts/midnight-smoke.mjs` passes: the same WRITE_OFF was refused with 0
-   director approvals and committed at block 580673 with 2, and the approving
-   secrets never reached the ledger. Wallet funded with 5000 tNight, tx
+   `node scripts/midnight-smoke.mjs` passes on BOTH authority rules: the same
+   WRITE_OFF was refused with 0 director approvals and committed with 2 (block
+   586223), and the same RESTRUCTURE was refused at the sanctioning grade and
+   committed one grade above it (block 586236). Neither the director secrets nor
+   the officer's grade reached the ledger. Wallet funded with 5000 tNight, tx
    0010bfb5bed15c599b6f56f3e62cc1b15a8c9fba61d83c592d43b86040edcc1c63.
    The seed now lives in .env at the repo root (gitignored), NOT in this file —
    handover.txt is tracked, so a seed written here ends up in git history. It is a
@@ -126,23 +150,28 @@ A) [DONE] THE DEPLOY — COMPLETE AND VERIFIED END TO END.
      cd midnight/contracts/commitment
      MIDNIGHT_NETWORK=preview MIDNIGHT_WALLET_SEED=<seed> NODE_OPTIONS=--max-old-space-size=6144 npx tsx src/deploy.ts
 
-B) [PARTLY DONE] The bridge and every circuit have now been exercised against the
-   live contract via scripts/midnight-smoke.mjs — deploy, register/confirm director,
-   originate, refused write-off, committed write-off. The /events board-approval
-   ordering IS tested and works.
-   STILL UNTESTED BY HAND: the web UI at /board renders and builds, but nobody has
-   clicked through the full flow in a browser. It
-   type-checks and `next build` succeeds, and it talks to the same endpoints the
-   smoke test exercises, but no one has clicked it.
+B) [DONE] The bridge and every circuit have been exercised against the live
+   contract, both by scripts/midnight-smoke.mjs and BY HAND in the browser. The
+   board room at /board has been clicked through: directors registered and
+   confirmed, a loan originated, a write-off refused at 1-of-2 and committed at
+   2-of-2. Receipts and refusals render correctly.
 
 C) [DONE] Docs rewritten Midnight-first: README.md (full rewrite, live contract
    address, engineering notes, honest gaps), DEMO.md (rebuilt around the refusal),
    midnight/contracts/commitment/README.md. VIDEO.md carries a header flagging it as
    pre-Midnight and pointing at DEMO.md — it was not rewritten.
-   STILL TO DO: record the actual demo video (a submission requirement).
 
-D) sanctioningSeniority / ONE_LEVEL_ABOVE is still `assert(true, ...)` in
-   appendEvent — a placeholder, unchanged from the previous session.
+   THE ONE REMAINING SUBMISSION REQUIREMENT IS THE DEMO VIDEO. It is not written
+   up here because requirements.txt now carries the full checklist and a
+   prioritised NEXT STEPS section — read that file first, not this one, if you
+   are picking the project up to finish it.
+
+D) [DONE] sanctioningSeniority / ONE_LEVEL_ABOVE is now a REAL check, and the
+   project's second ZK rule. `witness callerSeniority()` supplies the acting
+   officer's grade privately; verifySeniorityAbove compares it to the loan's
+   public sanctioning grade and discloses only the boolean. Publishing the grade
+   would leak the bank's internal hierarchy, so the ledger records that the rule
+   held rather than who held it. Covered by smoke-test steps 6 and 7.
 
 E) Board approvals are replayable across events (see 1B). Fixing it needs a
    per-event registration step the registry does not model.
@@ -190,6 +219,17 @@ G) [DONE] The whole Fabric stack has been REMOVED: network/, chaincode/, service
   node_modules in memory and will reproduce a bug you have already fixed. Kill by
   port (PowerShell Get-NetTCPConnection -LocalPort 8090) — pkill from git-bash does
   not reliably kill it.
+- The Preview indexer intermittently returns "ServerError: An unknown error
+  occurred" from inside the dust wallet's sync, which kills the circuit call in
+  flight. It is testnet infra, not our code. Retry. Worth knowing before you
+  record anything.
+- Redeploying is cheap NOW but only because .wallet-cache.<network>.json exists.
+  A redeploy resumed at index 151k and finished in about a minute instead of the
+  30-minute cold sync. Do not delete that file casually.
+- Changing the contract means REDEPLOYING and the address changes. Everything
+  that hardcodes an address (README, DEMO, handover, deployment.preview.json)
+  has to move with it. deployment.<network>.json is written automatically; the
+  docs are not.
 - persistentHash in TS needs a runtime type descriptor:
   persistentHash(new CompactTypeVector(1, new CompactTypeBytes(32)), [secret])
   matches the contract's persistentHash<Vector<1, Bytes<32>>>([x]). The bridge

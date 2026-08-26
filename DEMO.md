@@ -6,7 +6,7 @@ is not verified, it says so.
 This replaces the Hyperledger Fabric runbook that preceded the Midnight port. That stack has
 been removed from the repository; it remains in git history at commit `79eeef7`.
 
-**Target: 5 minutes.** One driver holds the mouse throughout.
+**Target: 5–6 minutes.** One driver holds the mouse throughout.
 
 ---
 
@@ -119,7 +119,37 @@ Then land the point the whole port was for:
 
 ---
 
-## 5. What we are not claiming (30 seconds)
+## 5. The second rule: rank (45 seconds)
+
+Scroll to **Or restructure it**. The acting grade starts at 2 — the same grade
+that sanctioned the loan. Click **Submit restructure**.
+
+Refused:
+
+```
+⛔ CIRCUIT REFUSED
+authority required: this event must be authorised at least one grade
+above the sanctioning officer
+```
+
+> "Not everything needs the board. A restructure needs *rank* — one grade above
+> whoever sanctioned the loan, so nobody clears their own decision. I just tried at
+> the same grade, and it refused."
+
+Click **+** to raise the grade to 3, submit again. It commits.
+
+> "And here's the part I care about. That officer's grade went in as a private
+> witness too. The chain now records that the rule held — it does not record what
+> grade anyone is. Publishing that on every reclassification would leak the bank's
+> whole internal hierarchy to anyone reading the ledger."
+
+**Why this step earns its 45 seconds:** one ZK rule can look like a party trick.
+Two rules with *different* privacy shapes — a count over a set, and a single
+comparison — show the pattern generalises.
+
+---
+
+## 6. What we are not claiming (30 seconds)
 
 Say this out loud. It is worth more than another feature.
 
@@ -140,6 +170,8 @@ Say this out loud. It is worth more than another feature.
 | `state divergence: append-only chain broken` | stale `prevStateHash` | re-read `GET /loans/:id`; the page does this automatically |
 | Write-off commits with 0 approvals | contract deployed without genesis params | `boardThresholdK` is 0 — redeploy; see the constructor note in the contract README |
 | Proof server errors | container not up | `docker ps`; restart it |
+| `ServerError: An unknown error occurred` mid-call | Preview indexer hiccup, not our code | retry; say "testnet hiccup, retrying" if on camera |
+| Restructure commits at the sanctioning grade | contract predates the seniority rule | redeploy; check `verifySeniorityAbove` exists |
 
 ---
 

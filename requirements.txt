@@ -66,19 +66,98 @@ TECHNOLOGY REQUIREMENTS
 - Smart contracts must be deployed to Midnight Preview or PreProd testnet.
 - Midnight docs: https://docs.midnight.network/
 
-ACTION ITEMS TO ADAPT THE EXISTING PROJECT
+SUBMISSION STATUS  (last updated 2026-08-26)
 --------------------------------------------
-1. Replace/port existing smart contracts to Midnight's Compact smart contract
-   language and deploy to Midnight Preview/PreProd (check current chain used
-   in the BD version and plan a migration path).
-2. Review Midnight's privacy-preserving / ZK features (Midnight is a
-   privacy-focused ZK blockchain) — see if the project's use case benefits from
-   confidential state, since this is a differentiator vs. typical EVM chains.
-3. Update docs/README for an international audience (remove BD-specific
-   references, regulatory assumptions, currency, language).
-4. Prepare a demo video and clear setup instructions per submission requirements.
-5. Confirm exact hackathon dates/deadline on the Devpost "Timeline" tab and
-   register the team before the deadline.
+Checked against the six CORE SUBMISSION REQUIREMENTS above.
+
+  [DONE] 1. Full-stack app on Midnight
+           Next.js front end (web/) -> bridge back end
+           (midnight/contracts/commitment/src/bridge.ts) -> Compact contract.
+           Not just a smart contract.
+
+  [DONE] 2. Meaningful Midnight integration
+           TWO authority rules proved in zero knowledge, with different privacy
+           shapes:
+             - board threshold: k-of-n over private director approval secrets;
+               only the verified COUNT is disclosed
+             - seniority: a private grade compared against the loan's public
+               sanctioning grade; only the boolean result is disclosed
+           Compact's disclose() analysis enforces the boundary at compile time.
+
+  [DONE] 3. Contract deployed on Midnight Preview
+           08b5b8b1bb403524b1066615752512019714a64859f77bea868f8615fe0f51da
+           Independently confirmed via the Preview indexer, not just our own
+           bridge. Real contract calls against it, not only a deploy.
+
+  [TODO] 4. Working demo (video / live demo)   <-- THE ONLY OPEN REQUIREMENT
+           No video exists. See NEXT STEPS below. DEMO.md has the full runbook
+           and the narration already written.
+
+  [DONE] 5. Clear documentation and setup instructions
+           README.md (run steps, architecture, engineering notes, honest gaps),
+           DEMO.md (demo runbook), midnight/contracts/commitment/README.md
+           (build status, toolchain gotchas).
+
+  [DONE] 6. Work completed within the hackathon timeline
+           First commit 2026-08-25; all Midnight work after it. An earlier
+           Hyperledger Fabric prototype was removed in commit f05f050 and
+           survives only in git history.
+
+
+NEXT STEPS  (in priority order)
+--------------------------------------------
+1. RECORD THE DEMO VIDEO.  Blocking. ~30 minutes.
+   This is requirement 4 and the only thing standing between the project and a
+   complete submission. Everything it needs already runs locally.
+
+     a. Start the three services (see DEMO.md section 0):
+          docker run -d -p 6300:6300 midnightntwrk/proof-server:8.1.0             midnight-proof-server -v
+          cd midnight/contracts/commitment && npm run bridge
+          npm --prefix web run dev
+     b. Sanity-check first:  node scripts/midnight-smoke.mjs   -> must print PASSED
+     c. Follow DEMO.md. Target 5 minutes. The narration is written out.
+     d. Film BOTH refusals, they are the whole argument:
+          - write-off with too few approvals -> refused, then commits with enough
+          - restructure at the sanctioning grade -> refused, then commits above it
+     e. Say out loud what the screen cannot show: the director secrets and the
+        officer's grade never reached the ledger. An absence does not demo itself.
+
+   Gotcha: the Preview indexer intermittently returns
+   "ServerError: An unknown error occurred" and kills a circuit call. It is
+   testnet infra, not our code, and a retry fixes it. If it happens on camera,
+   say "testnet hiccup, retrying" and carry on.
+
+2. DEPLOY THE FRONT END so a judge has a URL to click.  ~15 minutes, free.
+   Not a requirement, but three localhost services is a barrier most judges will
+   not cross, and it costs marks on Presentation and UX.
+
+     - Push web/ to Vercel (root directory: web).
+     - Set NEXT_PUBLIC_MIDNIGHT_BRIDGE to a reachable bridge, or leave it unset
+       and expect the "bridge unreachable" panel.
+     - Understand what this does and does not give you: the page will show the
+       live contract address and its on-chain state, but the BUTTONS will not
+       work for a stranger unless a bridge is also publicly reachable. The bridge
+       holds the funded wallet, so it cannot live in a browser.
+     - Optional, ~1-2 hours: put the bridge + a proof server on a small VM to
+       make the site fully clickable. The wallet seed then sits on a public
+       server and anyone can spend the test tokens. Acceptable on a testnet,
+       genuinely bad practice to present as a pattern.
+
+3. REGISTER ON DEVPOST, if not already done. Nothing in this repo proves the
+   team is registered, and no amount of code substitutes for it.
+
+4. CONFIRM THE DEADLINE on the Devpost Timeline tab. The KEY DATES section above
+   is scraped and self-evidently garbled: "Aug 26, 9:30pm EDT - Aug 27, 7:00am
+   IST" describes two instants about 30 minutes apart, which cannot be a
+   hackathon window. Do not plan against it.
+
+5. Optional, only with time to spare:
+   - Bind board approvals to a specific event (they are currently replayable).
+   - Derive callerRole from the caller's own key instead of the bridge asserting
+     it. Today it is not a security boundary and the README says so.
+   - Port the exposure or claims module. Lowest value of these three: one
+     genuinely working deployed contract beats two half-finished ones.
+
 
 CONTACTS
 --------
