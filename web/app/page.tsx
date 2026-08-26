@@ -1,35 +1,31 @@
 import Link from 'next/link';
 
 /**
- * Landing. The one sentence that frames the whole demo, then three doors.
+ * Landing. The thesis, then the one door that matters.
  *
- * "The rules are not what is missing" is the thesis of the paper and the first
- * thing a judge should read, so it is set at display size and nothing competes
- * with it.
+ * "The rules are not what is missing" is the argument the whole project rests on,
+ * so it is set at display size and nothing competes with it.
  */
 export default function Home() {
   return (
     <>
       <section style={{ maxWidth: '62rem', margin: '1.5rem 0 3.5rem' }}>
-        <span className="eyebrow">Brainwave 2026 · Midnight Track prototype</span>
+        <span className="eyebrow">Brainwave 2026 · Midnight Track</span>
         <h1 style={{ fontSize: 'clamp(2.1rem, 5.2vw, 3.6rem)', maxWidth: '19ch' }}>
           The rules are not
           <br />
           what is <span style={{ background: 'var(--mint)', padding: '0 .18em', borderRadius: '6px' }}>missing</span>.
         </h1>
         <p className="sub" style={{ fontSize: '1.05rem', marginTop: '1.25rem', maxWidth: '58ch' }}>
-          Central Authority already requires two signatures on every classification, caps rescheduling at three
-          occasions, and reserves the third to the Board. <strong>The record is what is missing</strong> — it
-          is held by the institution being examined, it can be revised afterwards, and it is read only when
-          an inspector is present.
+          Supervisors already require two signatures on every classification, cap rescheduling at a
+          fixed number of occasions, and reserve the later attempts to the Board.{' '}
+          <strong>The record is what is missing</strong> — it is held by the institution being
+          examined, it can be revised afterwards, and it is read only when an inspector is present.
         </p>
 
         <div className="row" style={{ marginTop: '1.75rem' }}>
-          <Link href="/bank" style={{ textDecoration: 'none' }}>
+          <Link href="/midnight" style={{ textDecoration: 'none' }}>
             <button>See a rule refuse something →</button>
-          </Link>
-          <Link href="/supervisor" style={{ textDecoration: 'none' }}>
-            <button className="ghost">Supervisor view</button>
           </Link>
         </div>
       </section>
@@ -48,59 +44,46 @@ export default function Home() {
         </div>
         <div className="card">
           <div className="stat alert">
-            <span className="value">32.26%</span>
-            <span className="label">gross NPL ratio, March 2026</span>
+            <span className="value">once</span>
+            <span className="label">how often the book is examined</span>
           </div>
-          <p className="hint">Second-highest nationally in the world, after war-affected Ukraine.</p>
+          <p className="hint">
+            120 calendar days per bank, international firms, donor money — and then it is over.
+          </p>
         </div>
         <div className="card">
           <div className="stat">
-            <span className="value">17 / 61</span>
-            <span className="label">banks an AQR has reached</span>
+            <span className="value">0</span>
+            <span className="label">credentials published</span>
           </div>
           <p className="hint">
-            120 calendar days per bank, international firms, donor money — and it happens once.
+            The board approvals that authorise a write-off are proved in zero knowledge. Only the
+            count reaches the ledger.
           </p>
         </div>
       </div>
 
-      <h2>Three views of the same ledger</h2>
-      <div className="grid-3">
-        <Link href="/bank" className="card linky">
-          <span className="pill ink">Act 1</span>
-          <h3 style={{ marginTop: '.7rem' }}>Bank officer</h3>
-          <p style={{ margin: 0, fontSize: '.9rem', color: 'var(--ink-2)' }}>
-            Commit a classification event. Watch the chaincode refuse an approval level that exists only on
-            paper, then accept it once three registered directors have signed.
-          </p>
-        </Link>
-
-        <Link href="/supervisor" className="card linky">
-          <span className="pill ink">Acts 2 &amp; 5</span>
-          <h3 style={{ marginTop: '.7rem' }}>Central Authority</h3>
-          <p style={{ margin: 0, fontSize: '.9rem', color: 'var(--ink-2)' }}>
-            The Evergreening Detection Index beside what the quarterly return recorded. Council parameters no
-            single bank can move, and a log of your own reads.
-          </p>
-        </Link>
-
-        <Link href="/depositor" className="card linky">
-          <span className="pill ink">Act 4</span>
-          <h3 style={{ marginTop: '.7rem' }}>Depositor</h3>
-          <p style={{ margin: 0, fontSize: '.9rem', color: 'var(--ink-2)' }}>
-            Sign your balance, verify it is inside the bank&rsquo;s published commitment, hold the claim.
-            Three steps, checked on your own device.
-          </p>
-        </Link>
+      <h2>The trade nobody should have to make</h2>
+      <div className="card" style={{ maxWidth: '70ch', marginBottom: '2.5rem' }}>
+        <p style={{ margin: 0, fontSize: '.92rem', color: 'var(--ink-2)' }}>
+          Putting approvals on a public chain normally means publishing every director&rsquo;s
+          signature to prove you had authorisation — handing a competitor your governance record.
+          That is a real reason institutions resist transparent ledgers, and not an unreasonable one.{' '}
+          <strong>
+            A supervisor needs to know that enough of the right people approved. It does not need to
+            know who they were.
+          </strong>{' '}
+          That distinction is what Midnight makes expressible.
+        </p>
       </div>
 
       <h2>What this is not</h2>
       <div className="card" style={{ maxWidth: '70ch' }}>
         <p style={{ margin: 0, fontSize: '.92rem', color: 'var(--ink-2)' }}>
-          No zk-SNARK solvency circuit — designed in the paper, not built here. No secondary transfer of
-          claim tokens, because no legal authority for one exists. No production HSM. All data synthetic.{' '}
-          <strong>The EDI is a screening indicator that ranks exposures for supervisory attention, never a
-          finding of misconduct.</strong>
+          A board approval proves knowledge of a registered commitment, not a signature over the
+          event — so it is replayable across events, and we say so. Director identities are still
+          public, because a ledger map lookup needs a public key; what the proof buys is credential
+          secrecy, not voter anonymity. No production HSM. All data synthetic.
         </p>
       </div>
     </>

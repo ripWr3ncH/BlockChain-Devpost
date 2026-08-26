@@ -296,11 +296,12 @@ with an error about a missing verifier key that was sitting right there on disk.
 - The bridge asserts its own `callerRole` per endpoint. That is fine for a prototype where
   one operator drives every party, but it is **not a security boundary** — production would
   derive the role from the caller's own key.
-- Only the `commitment` module is ported. `exposure` (cross-bank encrypted exposure
-  aggregation) and `claims` (depositor claim tokens) exist **only** as the older Fabric
-  chaincode under `chaincode/` and are not part of the Midnight build.
-- The Fabric stack (`network/`, `services/api/`, `chaincode/`, `redteam/`) is the
-  predecessor prototype, retained for reference. It is **not** what this submission runs on.
+- Only the `commitment` module exists on Midnight. Two further modules were designed but
+  are **not** built here: `exposure` (cross-bank encrypted exposure aggregation) and
+  `claims` (depositor claim tokens). They are described in the whitepaper, not implemented.
+- A predecessor of this project ran on Hyperledger Fabric. That stack has been removed —
+  this repository is the Midnight build and nothing else. The Fabric code remains in git
+  history at commit `79eeef7` for anyone who wants to compare the two approaches.
 
 All data is synthetic. No real borrower, depositor, or institution appears anywhere, and
 institution names are placeholders.
@@ -311,16 +312,18 @@ institution names are placeholders.
 
 ```
 midnight/contracts/commitment/
-  src/commitment.compact     the smart contract
+  src/commitment.compact     the smart contract — 6 circuits
   src/api.ts                 wallet, providers, deploy/join, circuit calls
   src/deploy.ts              deploy CLI -> deployment.<network>.json
   src/bridge.ts              the back end
   src/preflight.ts           fail-fast checks before the long sync
+  src/witnesses.ts           private witnesses (callerRole, board approvals)
   README.md                  build status, toolchain gotchas, threshold scope
+midnight/reference/          upstream example-counter source, kept for comparison
+web/app/page.tsx             landing
 web/app/midnight/page.tsx    the Midnight portal
 web/lib/midnight.ts          bridge client
 scripts/midnight-smoke.mjs   end-to-end verification
-chaincode/ network/ services/  legacy Fabric prototype (not the submission)
 ```
 
 ## Licence

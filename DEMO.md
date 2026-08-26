@@ -3,9 +3,8 @@
 **Written against the system as it actually is**, not as it was planned. Where something
 is not verified, it says so.
 
-This replaces the Hyperledger Fabric runbook that preceded the Midnight port. The Fabric
-stack still exists in the repository (`network/`, `chaincode/`, `services/api/`) but is
-**not** what this demo runs on.
+This replaces the Hyperledger Fabric runbook that preceded the Midnight port. That stack has
+been removed from the repository; it remains in git history at commit `79eeef7`.
 
 **Target: 5 minutes.** One driver holds the mouse throughout.
 

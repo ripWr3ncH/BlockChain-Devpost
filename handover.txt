@@ -146,15 +146,16 @@ D) sanctioningSeniority / ONE_LEVEL_ABOVE is still `assert(true, ...)` in
 E) Board approvals are replayable across events (see 1B). Fixing it needs a
    per-event registration step the registry does not model.
 
-F) `exposure` and `claims` contracts are still NOT ported — only `commitment` has a
-   Compact version. Previous handover's advice still stands: one genuinely working
-   deployed contract beats three half-finished ones.
+F) `exposure` and `claims` are NOT built on Midnight — only `commitment`. They are
+   designed in the whitepaper only. One genuinely working deployed contract beats
+   three half-finished ones.
 
-G) services/api (Fastify) still talks to the Fabric gateway and has NOT been wired
-   to Midnight. The bridge supersedes it for the Midnight path; decide whether
-   services/api is retired or proxies to the bridge.
-
-H) network/ (Fabric compose), chaincode/, redteam/*.sh are all still present.
+G) [DONE] The whole Fabric stack has been REMOVED: network/, chaincode/, services/,
+   redteam/, seed/, packages/, bench/, HANDOFF/, the bank/supervisor/depositor pages
+   and web/lib/api.ts. Those pages were dead in the browser anyway — they called
+   services/api on :4000, which needs the full Fabric network behind it. The repo is
+   now the Midnight build and nothing else; the Fabric code is in git history at
+   commit 79eeef7 if it is ever needed for comparison.
 
 
 ============================================================================
